@@ -1,0 +1,332 @@
+.welcome-page {
+    background-color: var(--vt-smoke);
+    padding-bottom: 100px;
+}
+
+.header-background-image {
+    position: relative;
+    width: 100%;
+    height: clamp(25rem, 100vh, 39.5rem);
+    background: center / cover no-repeat;
+    z-index: 0;
+}
+
+.header-background-image::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(229, 117, 31, 0.25);
+}
+
+.header-content {
+    display: flex;
+    flex-direction: column;
+    gap: 9.375rem;
+    position: absolute;
+    bottom: 0;
+}
+
+.row {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    margin-bottom: 90px;
+    gap: 150px;
+}
+
+.sign-container-flex,
+.cta-car {
+    flex: 50%;
+    position: relative;
+    margin-bottom: -20px;
+}
+
+.cta-car {
+    z-index: 3;
+}
+
+.car-svg {
+    width: clamp(15.625rem, 60vw, 49.375rem);
+    height: auto;
+    z-index: 3;
+    padding: 0 2.188rem;
+}
+
+.title-header {
+    position: absolute;
+    top: 9.375rem;
+    padding: 0 9.375rem;
+    z-index: 2;
+    width: 31.25rem;
+    color: var(--vt-white);
+    font-size: 2.3rem;
+}
+
+.sign-container-flex {
+    display: flex;
+    justify-content: center;
+    gap: 50px;
+}
+
+.sign {
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 9.375rem;
+    height: 9.375rem;
+    background: center / cover no-repeat;
+}
+
+.signup,
+.get-started,
+.login {
+    width: 9.375rem;
+    height: 9.375rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.login {
+    height: 10.313rem;
+}
+
+.sign-text {
+    font-size: 2rem;
+    font-weight: bold;
+    text-align: center;
+    width: 6.25rem;
+}
+
+.login .sign-text {
+    color: var(--vt-white);
+}
+
+.sign-pole {
+    width: 10px;
+    height: 200px;
+    background-color: #BDBDBF;
+    z-index: 1;
+}
+
+.pole-align {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+@keyframes sway {
+    0% { transform: rotate(0deg); }
+    25% { transform: rotate(5deg); }
+    50% { transform: rotate(0deg); }
+    75% { transform: rotate(-5deg); }
+    100% { transform: rotate(0deg); }
+}
+
+.pole-align:hover {
+    animation: sway 1s ease-in-out infinite;
+}
+
+.road-container {
+    position: absolute;
+    bottom: 0;
+    width: 100vw;
+    height: 120px;
+    background-color: #B0B0AF;
+    z-index: 2;
+    overflow: hidden;
+}
+
+.road {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 115px;
+    background-color: #4D4D4D;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.road-line {
+    position: absolute;
+    top: 50%;
+    width: 200%;
+    overflow: hidden;
+    height: 5px;
+    background: repeating-linear-gradient(to right,
+            transparent 0,
+            transparent 120px,
+            #BDBDBF 120px,
+            #BDBDBF 240px);
+    animation: roadMove 6s linear infinite;
+}
+
+@keyframes roadMove {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-240px); }
+}
+
+.content {
+    width: 80vw;
+    margin: 20px auto;
+    background-color: white;
+    border-radius: 30px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    margin-top: 50px;
+}
+
+/* Tool Section Styles */
+.tool-header {
+    color: #861F41;
+    font-size: 2rem;
+    margin: 2rem 0 1.5rem 0;
+    font-weight: bold;
+}
+
+/* Standardized font size for all content paragraphs */
+.tool-intro,
+.tool-outro,
+.team-intro,
+.team-outro,
+p {
+    font-size: 1.125rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.tool-highlight {
+    font-weight: 600;
+    color: #333;
+}
+
+.vehicle-list {
+    list-style: none;
+    padding: 0;
+    margin: 2rem 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.vehicle-list li {
+    background-color: #f5f5f5;
+    padding: 1.25rem;
+    border-radius: 8px;
+    font-size: 1.125rem;
+    text-align: center;
+    transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.vehicle-list li:hover {
+    transform: translateY(-3px);
+    background-color: #861F41;
+    color: white;
+}
+
+/* Team Section Styles */
+.team-header {
+    color: #861F41;
+    font-size: 2rem;
+    margin: 2rem 0 1.5rem 0;
+    font-weight: bold;
+}
+
+.team-subheader {
+    color: #861F41;
+    font-size: 1.75rem;
+    margin: 2.5rem 0 1.5rem 0;
+}
+
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1.5rem;
+    margin: 2rem 0;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.team-member {
+    background-color: #f5f5f5;
+    padding: 1.5rem;
+    border-radius: 12px;
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+.team-member:hover {
+    transform: translateY(-5px);
+}
+
+.team-member h4 {
+    color: #861F41;
+    margin: 0 0 0.75rem 0;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.team-member p {
+    margin: 0;
+    font-size: 1.125rem;
+    color: #666;
+    line-height: 1.4;
+}
+
+/* General Styles */
+h2 {
+    color: var(--vt-maroon);
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.bold {
+    font-weight: bold;
+}
+
+/* Responsive Grid Layouts */
+@media (max-width: 1200px) {
+    .team-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .team-grid .team-member:nth-last-child(-n+2) {
+        grid-column: span 1;
+        transform: translateX(50%);
+    }
+}
+
+@media (max-width: 768px) {
+    .team-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .team-grid .team-member:nth-last-child(-n+2) {
+        transform: none;
+    }
+
+    .vehicle-list {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .team-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .team-member {
+        max-width: 300px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .vehicle-list {
+        grid-template-columns: 1fr;
+    }
+}

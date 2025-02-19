@@ -1,0 +1,78 @@
+# 1. Start fresh by deleting database and restarting server
+rm energy_estimation.db
+python app.py
+
+# 2. Test the home route
+curl http://localhost:5000/
+
+# 3. Register a new user
+curl -X POST http://localhost:5000/api/signup \
+-H "Content-Type: application/json" \
+-d '{"username":"testuser", "password":"testpass"}'
+
+# 4. Login
+curl -X POST http://localhost:5000/api/login \
+-H "Content-Type: application/json" \
+-d '{"username":"testuser", "password":"testpass"}'
+
+# 5. Get vehicle types (should show ICEV, BEV, HEV, HFCV)
+curl http://localhost:5000/api/vehicle-types
+
+# 6. Upload vehicle parameters for all vehicle types
+curl -X POST http://localhost:5000/api/admin/upload-vehicle-params \
+-F "file=@veh_parameters.txt" \
+-u admin:1234
+
+# 7. Verify parameters were uploaded correctly
+curl http://localhost:5000/api/vehicle-params
+
+# 8. Test energy estimation for each vehicle type:
+
+# ICEV (Type 1) - Should show fuel consumption in MPG
+curl -X POST http://localhost:5000/api/estimate \
+-F "file=@speed_profile.txt" \
+-F "username=testuser" \
+-F "vehicle_type_id=1"
+
+# BEV (Type 2) - Should show electric consumption and SOC
+curl -X POST http://localhost:5000/api/estimate \
+-F "file=@speed_profile.txt" \
+-F "username=testuser" \
+-F "vehicle_type_id=2"
+
+# HEV (Type 3) - Should show hybrid fuel consumption
+curl -X POST http://localhost:5000/api/estimate \
+-F "file=@speed_profile.txt" \
+-F "username=testuser" \
+-F "vehicle_type_id=3"
+
+# HFCV (Type 4) - Should show hydrogen consumption
+curl -X POST http://localhost:5000/api/estimate \
+-F "file=@speed_profile.txt" \
+-F "username=testuser" \
+-F "vehicle_type_id=4"
+
+# 9. View all session results
+curl http://localhost:5000/api/user-collections/testuser
+
+# Error handling tests:
+
+# 10. Try to upload parameters with missing file
+curl -X POST http://localhost:5000/api/admin/upload-vehicle-params \
+-u admin:1234
+
+# 11. Try to estimate with missing speed profile
+curl -X POST http://localhost:5000/api/estimate \
+-F "username=testuser" \
+-F "vehicle_type_id=1"
+
+# 12. Try invalid vehicle type
+curl -X POST http://localhost:5000/api/estimate \
+-F "file=@speed_profile.txt" \
+-F "username=testuser" \
+-F "vehicle_type_id=999"
+
+# 13. Try unauthorized parameter upload
+curl -X POST http://localhost:5000/api/admin/upload-vehicle-params \
+-F "file=@veh_parameters.txt" \
+-u testuser:testpass

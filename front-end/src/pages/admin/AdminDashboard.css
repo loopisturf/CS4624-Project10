@@ -1,0 +1,93 @@
+.admin-dashboard {
+    padding: 40px;
+    padding-top: calc(var(--header-height) + 40px);
+    background-color: var(--vt-smoke);
+    min-height: 100vh;
+  }
+  
+  .admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+  
+  .admin-header h2 {
+    color: var(--vt-maroon);
+    margin: 0;
+    font-size: 24px;
+    font-weight: bold;
+  }
+  
+  .admin-header p {
+    color: #666;
+    margin: 8px 0 0 0;
+    font-size: 16px;
+  }
+  
+  .admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  .admin-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    height: 100%;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+  
+  .admin-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  
+  .admin-card-content {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 200px;
+  }
+  
+  .admin-card-icon {
+    color: var(--vt-maroon);
+    margin-bottom: 16px;
+  }
+  
+  .admin-card-content h3 {
+    color: var(--vt-maroon);
+    margin: 0 0 12px 0;
+    font-size: 20px;
+    font-weight: bold;
+  }
+  
+  .admin-card-content p {
+    color: #666;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+  }
+  
+  @media screen and (max-width: 768px) {
+    .admin-dashboard {
+      padding: 20px;
+      padding-top: calc(var(--header-height) + 20px);
+    }
+    
+    .admin-header {
+      flex-direction: column;
+      gap: 16px;
+    }
+  }
