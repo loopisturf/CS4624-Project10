@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Speed Profile from spd-hfcv.txt</title>
+  <!-- Load Plotly.js and Chart.js from CDN -->
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    #performance-stats {
+      background: #eee;
+      padding: 10px;
+      text-align: center;
+      font-size: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+    #container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 20px;
+    }
+    .chart-container {
+      width: 80%;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <!-- Performance Stats Section -->
+  <div id="performance-stats">
+    <span id="fps">FPS: Calculating...</span>
+  </div>
+
+  <h1>Speed Profile Graph from spd-hfcv.txt</h1>
+  <div id="container">
+    <!-- Container for the Plotly graph -->
+    <div id="plotlyChart" class="chart-container"></div>
+    <!-- Container for the Chart.js graph -->
+    <canvas id="chartJsChart" class="chart-container"></canvas>
+  </div>
+
+  <script>
+    // Performance Stats Update Code
+    (function(){
+      const fpsElement = document.getElementById('fps');
+      let lastFrameTime = performance.now();
+      let frameCount = 0;
+      
+      function updateStats() {
+        const now = performance.now();
+        frameCount++;
+        const delta = now - lastFrameTime;
+        if(delta >= 1000) { // update every second
+          const fps = Math.round(frameCount * 1000 / delta);
+          fpsElement.textContent = "FPS: " + fps;
+          frameCount = 0;
+          lastFrameTime = now;
+        }
+        requestAnimationFrame(updateStats);
+      }
+      requestAnimationFrame(updateStats);
+    })();
+
+    // Fetch and parse the speed data file, then plot with Plotly and Chart.js
+    fetch('spd-hfcv.txt')
+      .then(response => response.text())
+      .then(data => {
+        // Split the file content into lines and convert to numbers
+        const lines = data.split('\n');
+        const speedData = lines
+          .map(line => parseFloat(line.trim()))
+          .filter(num => !isNaN(num));
+
+        // Use the index of each value as the x-axis (time step)
+        const timeData = speedData.map((_, index) => index);
+
+        // --- Plotly.js Graph ---
+        const plotlyTrace = {
+          x: timeData,
+          y: speedData,
+          mode: 'lines',
+          type: 'scatter',
+          name: 'Speed Profile'
+        };
+
+        const plotlyLayout = {
+          title: 'Plotly.js Speed Profile',
+          xaxis: { title: 'Time (index)' },
+          yaxis: { title: 'Speed' }
+        };
+
+        Plotly.newPlot('plotlyChart', [plotlyTrace], plotlyLayout);
+
+        // --- Chart.js Graph ---
+        const ctx = document.getElementById('chartJsChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: timeData,
+            datasets: [{
+              label: 'Speed Profile',
+              data: speedData,
+              fill: false,
+              borderColor: 'rgba(75,192,192,1)',
+              tension: 0.1
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: 'Time (index)'
+                }
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: 'Speed'
+                }
+              }
+            },
+            plugins: {
+              title: {
+                display: true,
+                text: 'Chart.js Speed Profile'
+              }
+            }
+          }
+        });
+      })
+      .catch(error => {
+        console.error('Error loading the file:', error);
+      });
+  </script>
+</body>
+</html>
