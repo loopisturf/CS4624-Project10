@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area } from 'recharts'; // Old Import
+import Plot from 'react-plotly.js'; // Import Plotly
 import Sidebar from '../../components/sidebar/Sidebar.js';
 import './Body.css';
 
@@ -15,7 +16,6 @@ const MetricCard = ({ label, value, unit }) => (
 
 const getAvailableMetrics = (engineType, data) => {
   const metrics = [];
-
   if (data?.model) {
     switch (engineType) {
       case 'ICEV':
@@ -24,7 +24,7 @@ const getAvailableMetrics = (engineType, data) => {
           id: 'fuel_rate', 
           label: 'Fuel Rate', 
           unit: 'L/s', 
-          color: '#e63946',
+          color: engineType == 'ICEV' ? '#2a9d30' : '#e63946', // Allows for different line colors
           valueKey: 'model',
           processValue: (v) => Math.abs(Number(v))
         });
@@ -32,19 +32,19 @@ const getAvailableMetrics = (engineType, data) => {
           id: 'fuel_economy',
           label: 'Fuel Economy',
           unit: 'MPG',
-          color: '#457b9d',
+          color: engineType == 'ICEV' ? '#7c51d9' : '#457b9d', // Allows for different line colors
           valueKey: 'model',
           processValue: (v, speed) => speed > 0 ? (0.621371 / (v * 3.6)) : 0
         });
         break;
-
+        
       case 'BEV':
       case 'HFCV':
         metrics.push({ 
           id: 'power', 
           label: 'Power Output', 
           unit: 'kW', 
-          color: '#2a9d8f',
+          color: engineType == 'BEV' ? '#2a9d8f' : '#ea41c2', // Allows for different line colors
           valueKey: 'model',
           processValue: (v) => Math.abs(Number(v))
         });
@@ -52,7 +52,7 @@ const getAvailableMetrics = (engineType, data) => {
           id: 'energy_efficiency',
           label: 'Energy Efficiency',
           unit: 'mi/kWh',
-          color: '#f4a261',
+          color: engineType == 'BEV' ? '#ff2828' : '#f4a261', // Allows for different line colors
           valueKey: 'model',
           processValue: (v, speed) => speed > 0 ? (0.621371 * speed) / (Math.abs(v) * 3600) : 0
         });
@@ -80,8 +80,9 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
   );
 
   const [selectedMetric, setSelectedMetric] = useState('');
+  // TODO Remove Bins!
   const [visualizationType, setVisualizationType] = useState('binned');
-  const [binSize, setBinSize] = useState(5);
+  const [binSize, setBinSize] = useState(1);
   const [windowSize, setWindowSize] = useState(50);
   const [samplingRate, setSamplingRate] = useState(10);
 
@@ -198,6 +199,8 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
 
   return (
     <div className="chart-container">
+      {/* TODO Change the original Chart Controls*/}
+      {/* TODO Ask if we still even need this? */}
       <div className="chart-controls">
         <div className="control-group">
           <label>Metric:</label>
@@ -270,9 +273,34 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
           </div>
         )}
       </div>
-      
       <div className="chart-wrapper">
-        <ResponsiveContainer width="100%" height="100%">
+      {/*Ploty plot*/}
+      <Plot
+            data={[
+              {
+                x: processChartData.map(point => point.speed), // I think this may be an ISSUE
+                y: processChartData.map(point => point.value),
+                type: 'scatter',
+                mode: 'lines', // Just lines, markers produce some clutter
+                line: { width: 2 },
+                marker: {color: selectedMetricConfig.color},
+              },
+            ]}
+            layout={{ 
+              margin: { t: 30, r: 30, l: 60, b: 35 }, 
+              title: {text: `${selectedMetricConfig.label} vs Speed`, x: 0.5, xanchor: 'center'},
+              yaxis: { title: { text: `${selectedMetricConfig.label} (${selectedMetricConfig.unit})` } },
+              xaxis: { title: { text: 'Speed (km/h)' } },
+              autosize: true, // Allow for autosizing with window
+            }}
+            config={{
+              displayModeBar: false, // Removes plotly builtin in menu bar
+              responsive: true, // Allows resizing
+            }}
+            useResizeHandler
+            style={{ width: '100%', height: '100%' }}
+          />
+        {/* <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={processChartData}
             margin={{ top: 20, right: 30, left: 60, bottom: 20 }}
@@ -325,7 +353,7 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
               />
             )}
           </LineChart>
-        </ResponsiveContainer>
+        </ResponsiveContainer> */}
       </div>
     </div>
   );
