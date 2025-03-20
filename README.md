@@ -10,11 +10,10 @@ This web application allows users to estimate fuel and energy consumption for di
 - **Backend**: Flask + SQLite
 
 ## Team Members
-1. Courtney Quinn (courtneyq@vt.edu) - Backend Lead, Group Leader
-2. Layla Scott (laylas@vt.edu) - Frontend Lead, Meeting Minutes
-3. Rohin Batra (rohin@vt.edu) - Backend Support
-4. Eric Tapia (teric@vt.edu) - Backend Support
-5. Christina Chao (humanerr0r@vt.edu) - Frontend Support
+1. Katelyn Crumpacker: Design, Database, Team Leader
+2. Trevor White: Requirements, Backend
+3. David Rankin: Prototyping, Frontend
+4. Harsha Paladugu: Implementation 
 
 ## Project Description
 Researchers at VTTI have developed fuel/energy consumption models for various vehicle types. This web application aims to make these models accessible to users, allowing them to input vehicle speed and/or acceleration profiles and receive estimated fuel/energy consumption data with visualizations.
