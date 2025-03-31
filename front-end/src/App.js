@@ -13,6 +13,7 @@ import AdminDashboard from './pages/admin/AdminDashboard.js';
 import AdminUsers from './pages/admin/users/AdminUsers.js';
 import AdminCollections from './pages/admin/users/AdminCollections.js';
 import Vehicles from './pages/admin/vehicle/Vehicles.js';
+import Calculations from './pages/admin/calculations/Calculations.js'
 import CreateCollection from './pages/collections/CreateCollection.js';
 import EditCollection from './pages/collections/EditCollection.js'; // Add this import
 import './global.css';
@@ -99,6 +100,14 @@ function App() {
             element={
               <ProtectedRoute adminRequired>
                 <Vehicles />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/calculations"
+            element={
+              <ProtectedRoute adminRequired>
+                <Calculations />
               </ProtectedRoute>
             }
           />

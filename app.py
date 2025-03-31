@@ -9,6 +9,7 @@ import sqlite3
 import json
 import base64
 from datetime import datetime
+import importlib.util
 import sys
 import numpy as np
 from getEnergy import getEnergy
@@ -20,18 +21,22 @@ from flask import Flask, request, jsonify, send_file  # Add send_file to imports
 # Load environment variables
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 CORS(app)
 
+
 # Configure upload folder and allowed file extensions
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'csv', 'txt'}
+VEHICLE_UPLOAD_FOLDER = 'uploads'
+CALCULATION_UPLOAD_FOLDER = 'calculation_files'
+ALLOWED_EXTENSIONS = {'csv', 'txt', '.py'}
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['VEHICLE_UPLOAD_FOLDER'] = VEHICLE_UPLOAD_FOLDER
+app.config['CALCULATION_UPLOAD_FOLDER'] = CALCULATION_UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = None
 
 # Ensure upload folder exists
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(VEHICLE_UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(CALCULATION_UPLOAD_FOLDER, exist_ok=True)
 
 # Database setup
 def get_db_connection():
@@ -383,6 +388,36 @@ def upload_vehicle_params():
             return jsonify({"error": f"Error processing file: {str(e)}"}), 500
     else:
         return jsonify({"error": "File type not allowed"}), 400
+
+@app.route('/api/admin/upload-calculation', methods=['POST'])
+# @admin_required
+def upload_calculation():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+
+    file = request.files['file']
+
+    # Ensure the calculations directory exists
+    os.makedirs(app.config['CALCULATION_UPLOAD_FOLDER'], exist_ok=True)
+
+    # Save the file directly in 'calculations/'
+    file_path = os.path.join(app.config['CALCULATION_UPLOAD_FOLDER'], file.filename)
+    file.save(file_path)
+
+    # If the uploaded file is a Python script, try reloading it
+    if file.filename.endswith('.py'):
+        module_name = file.filename[:-3]  # Remove '.py' extension
+        module_path = file_path
+
+        # Load module dynamically
+        spec = importlib.util.spec_from_file_location(module_name, module_path)
+        if spec and spec.loader:
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return jsonify({"message": "File uploaded and reloaded successfully", "path": file_path}), 200
+
+    return jsonify({"message": "File uploaded successfully", "path": file_path}), 200
+
     
 @app.route('/api/estimate', methods=['POST'])
 def estimate_energy():
@@ -410,7 +445,7 @@ def estimate_energy():
         try:
             # Save file temporarily
             filename = secure_filename(file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file_path = os.path.join(app.config['VEHICLE_UPLOAD_FOLDER'], filename)
             file.save(file_path)
             
             # Parse speed profile
@@ -500,7 +535,7 @@ def create_collection():
 
         # Handle speed profile file
         filename = secure_filename(file.filename)
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file_path = os.path.join(app.config['VEHICLE_UPLOAD_FOLDER'], filename)
         file.save(file_path)
         
         try:
@@ -641,6 +676,8 @@ def get_users():
     
     conn.close()
     return jsonify(result)
+
+
 
 @app.route('/api/collections/<int:collection_id>', methods=['PUT'])
 def update_collection(collection_id):

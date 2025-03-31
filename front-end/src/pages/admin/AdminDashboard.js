@@ -60,6 +60,16 @@ function AdminDashboard() {
           </div>
         </div>
 
+        <div className="admin-card" onClick={() => navigate('/admin/calculations')}>
+          <div className="admin-card-content">
+            <div className="admin-card-icon">
+              <UsersIcon />
+            </div>
+            <h3>Calculation Management</h3>
+            <p>View current calculations and add new calculations.</p>
+          </div>
+        </div>
+
         <div className="admin-card" onClick={() => navigate('/admin/vehicles')}>
           <div className="admin-card-content">
             <div className="admin-card-icon">

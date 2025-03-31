@@ -48,6 +48,7 @@ function Header({ setSidebarOpen, isSidebarOpen }) {
                     <button onClick={() => handleNavigation('/collections')}>My Collections</button>
                     <button onClick={() => handleNavigation('/admin/vehicles')}>Vehicle Params</button>
                     <button onClick={() => handleNavigation('/admin/users')}>User Management</button>
+                    <button onClick={() => handleNavigation('/admin/calculations')}>Calculation Parameters</button>
                     <button onClick={() => handleNavigation('/logout')}>Logout</button>
                   </>
                 ) : (
