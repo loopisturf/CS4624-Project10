@@ -245,15 +245,27 @@ const Sidebar = ({ isOpen, setEstimationResult, collectionId, viewMode, setViewM
           ))}
         </div>
 
-        {/* Analysis button */}
-        <button
-          onClick={handleAnalyze}
-          disabled={loading || selectedEngines.length === 0}
+        {/* Analysis buttons */}
+        <button onClick={() => {
+            // First analyze individually then set view mode to 'individual'
+            handleAnalyze();
+            setViewMode('individual');
+          }} 
           className="analyze-button"
-          aria-busy={loading}
         >
-          {loading ? 'Analyzing...' : 'Analyze Selected Engines'}
+          Analyze Selected Engines
         </button>
+
+        <button onClick={() => {
+            // Analyze and then show combined view
+            handleAnalyze();
+            setViewMode('combined');
+          }} 
+          className="analyze-button"
+        >
+          Analyze Selected Engines Together
+        </button> 
+
       </div>
     </aside>
   );
