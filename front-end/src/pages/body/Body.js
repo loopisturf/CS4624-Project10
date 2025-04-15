@@ -68,6 +68,14 @@ const getAvailableMetrics = (engineType, data) => {
           processValue: (v) => Number(v)
         });
     }
+    metrics.push({
+      id: 'fuel_energy',
+      label: 'Fuel Energy',
+      unit: 'kWh',
+      color: '#ffa600',
+      valueKey: 'model',
+      processValue: (v) => Math.abs(Number(v)) * 9.3127778
+    });
   }
 
   return metrics;
