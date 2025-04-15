@@ -17,6 +17,8 @@ import io
 import zipfile
 import csv
 from flask import Flask, request, jsonify, send_file  # Add send_file to imports
+import random
+import traceback
 
 # Load environment variables
 load_dotenv()
@@ -679,6 +681,7 @@ def get_users():
 
 
 
+
 @app.route('/api/collections/<int:collection_id>', methods=['PUT'])
 def update_collection(collection_id):
     """Update an existing collection."""
@@ -734,6 +737,50 @@ def update_collection(collection_id):
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@app.route('/api/metrics', methods=['POST'])
+def add_metric():
+    """Add a new metric."""
+    metric_name = request.form.get('metricName')
+    metric_units = request.form.get('metricUnits')
+    metric_id = metric_name.lower().replace(" ", "_")
+    metric_color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
+    metric_key = "model"
+    
+    if not metric_name:
+        return jsonify({"error": "Metric name is required"}), 400
+    if not metric_units:
+        return jsonify({"error": "Metric units are required"}), 400
+    try:
+        conn = get_db_connection()
+        
+        # Check if metric exist
+        existing_metric = conn.execute(
+            'SELECT * FROM metrics WHERE label = ? AND unit = ?',
+            (metric_name, metric_units)
+        ).fetchone()
+        
+        if existing_metric:
+            return jsonify({"error": "Metric already exists for this user"}), 409
+        
+        # Insert new metric data into the database
+        conn.execute(''' 
+            INSERT INTO metrics (id, label, unit, color, valueKey)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (metric_id, metric_name, metric_units, metric_color, metric_key))
+        
+        conn.commit()
+        
+        return jsonify({"message": "Metric added successfully"}), 201
+    
+    except Exception as e:
+        print("Error occurred:")
+        print(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
+    
     finally:
         if conn:
             conn.close()
@@ -950,6 +997,7 @@ Analysis completed: {datetime.now().isoformat()}
     finally:
         if conn:
             conn.close()
+
 
 if __name__ == '__main__':
     app.run(debug=True)
