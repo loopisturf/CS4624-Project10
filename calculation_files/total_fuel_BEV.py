@@ -46,12 +46,18 @@ def calculate_total_fuel_BEV(w_em_rads, SOC0, SOCmin, BattCapacity_Wh, P_aux, co
     # Calculate recovered energy
     P_net_neg = np.where(P_net < 0, P_net, 0)
     EE_recovered_kWh = np.sum(P_net_neg) / 3600000
+    EE_consumed_L = EE_consumed_kWh / 9.3127778 # L
+    EE_consumed_G = EE_consumed_L * 0.26417205
+    miles_per_gallon = distance_miles / EE_consumed_G
 
     # Return results
+    # the names in the return value are not correct it is just the units they will eventually be used to calculate
     return {
         'model': (P_net / 1000).tolist(),
-        'EE_consumed_kWh': EE_consumed_kWh,
         'EE_recovered_kWh': EE_recovered_kWh,
         'SOC_final_percent': SOCfinal_percent,
-        'Energy_consumed_mile_per_kWh': Energy_consumed_miperkwh
+        'kW': EE_consumed_kWh,
+        'L/s': EE_consumed_L,
+        'mi/kWh': Energy_consumed_miperkwh,
+        'MPG': miles_per_gallon
     }

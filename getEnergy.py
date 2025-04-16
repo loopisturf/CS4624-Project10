@@ -192,6 +192,7 @@ def getEnergy(selection, speed_data, param_list):
     comp_eta = ETA_BATTERY * ETA_DRIVELINE * ETA_EM
 
     # Select calculation based on input
+    # NEED TO UPDATE TO DYNAMICALLY CALL THIS FROM THE FILE
     if selection == 1:
         out = calculate_total_fuel_ICEV(v, Alpha_0, Alpha_1, Alpha_2, Power_kW)
     elif selection == 2:

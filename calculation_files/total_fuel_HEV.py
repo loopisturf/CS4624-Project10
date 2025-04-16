@@ -23,15 +23,19 @@ def calculate_total_fuel_HEV(v, Power_kW, Alpha_0, Alpha_1, Alpha_2, Alpha_3):
     # Calculate total fuel, distance, and other metrics
     total_fuel = np.sum(HEV_MODEL) / 1000  # Convert to liters
     distance_m = np.sum(v)  # Total distance in meters
+    distance_miles = distance_m * 0.00062137 # total distance in miles
     total_fuel_LperKm = total_fuel / (distance_m / 1000)  # liters/km
     total_fuel_kmperL = 1 / total_fuel_LperKm
     total_fuel_mpg = total_fuel_kmperL * 2.35215  # Convert to mpg
     total_energy_kWh = total_fuel * 9.3127778  # Convert to kWh
+    miles_per_kWh = distance_miles / total_energy_kWh  # convert to mi/kWh
 
     # Return the results
+    # the names in the return value are not correct it is just the units they will eventually be used to calculate
     return {
         'model': (HEV_MODEL / 1000).tolist(),
-        'total_fuel_liters': total_fuel,
-        'total_fuel_mpg': total_fuel_mpg,
-        'total_energy_kWh': total_energy_kWh
+        'kW': total_energy_kWh,
+        'L/s': total_fuel,
+        'mi/kWh': miles_per_kWh,
+        'MPG': total_fuel_mpg
     }

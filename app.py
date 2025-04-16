@@ -480,6 +480,8 @@ def estimate_energy():
             # Calculate energy consumption
             try:
                 result = getEnergy(vehicle_type_id, speed_data, param_list)
+                # print(result)
+                # print("result")
             except Exception as calc_error:
                 return jsonify({"error": f"Energy calculation failed: {str(calc_error)}"}), 400
             
@@ -737,6 +739,36 @@ def update_collection(collection_id):
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+@app.route('/api/metrics', methods=['GET'])
+def get_metrics():
+    """Get all metrics."""
+    try:
+        conn = get_db_connection()
+        
+        # Fetch all metrics from the database
+        metrics = conn.execute('SELECT DISTINCT id, label, unit, color, valueKey FROM metrics').fetchall()
+        # If no metrics are found
+        if not metrics:
+            return jsonify({"message": "No metrics found"}), 404
+        
+        # Return the metrics in JSON format
+        return jsonify([{
+            'id': metric['id'],
+            'label': metric['label'],
+            'unit': metric['unit'],
+            'color': metric['color'],
+            'valueKey': metric['valueKey']
+        } for metric in metrics]), 200
+    
+    except Exception as e:
+        print("Error occurred:")
+        print(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
+    
     finally:
         if conn:
             conn.close()

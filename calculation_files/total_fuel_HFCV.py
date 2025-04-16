@@ -32,14 +32,21 @@ def calculate_total_fuel_HFCV(v, Power_kW, Max_Power):
     # Calculate total fuel and metrics
     total_fuel_kWh = np.sum(HFCV_MODEL) / 3600  # Convert to kWh
     distance_m = np.sum(v)  # Total distance in meters
+    distance_miles = distance_m * 0.00062137 # total distance in miles
     total_fuel_kWhperkm = total_fuel_kWh / (distance_m / 1000)  # kWh/km
     total_fuel_kmperkWh = 1 / total_fuel_kWhperkm  # km/kWh
     total_fuel_mileperkWh = total_fuel_kmperkWh / 1.60934  # mile/kWh
+    total_fuel_liters = total_fuel_kWh / 9.3127778 # L
+    total_fuel_gallons = total_fuel_liters * 0.26417205 # total fuel in gallons
+    miles_per_gallon = distance_miles / total_fuel_gallons
 
     # Return results
+    # the names in the return value are not correct it is just the units they will eventually be used to calculate
     return {
         'model': HFCV_MODEL.tolist(),
-        'total_energy_kWh': total_fuel_kWh,
-        'total_energy_mile_per_kWh': total_fuel_mileperkWh
+        'kW': total_fuel_kWh,
+        'L/s' : total_fuel_liters,
+        'mi/kWh': total_fuel_mileperkWh,
+        'MPG': miles_per_gallon
     }
 
