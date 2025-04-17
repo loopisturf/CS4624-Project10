@@ -392,33 +392,44 @@ def upload_vehicle_params():
         return jsonify({"error": "File type not allowed"}), 400
 
 @app.route('/api/admin/upload-calculation', methods=['POST'])
-# @admin_required
 def upload_calculation():
     if 'file' not in request.files:
         return jsonify({"error": "No file part"}), 400
 
     file = request.files['file']
 
+    # Ensure the vehicles are provided
+    if 'vehicles' not in request.form:
+        return jsonify({"error": "No vehicles specified"}), 400
+
+    vehicles = request.form['vehicles'].split(',')
+    vehicles = [vehicle.strip().upper() for vehicle in vehicles]  # Clean up vehicle names
+
     # Ensure the calculations directory exists
-    os.makedirs(app.config['CALCULATION_UPLOAD_FOLDER'], exist_ok=True)
+    base_folder = app.config['CALCULATION_UPLOAD_FOLDER']
+    os.makedirs(base_folder, exist_ok=True)
 
-    # Save the file directly in 'calculations/'
-    file_path = os.path.join(app.config['CALCULATION_UPLOAD_FOLDER'], file.filename)
-    file.save(file_path)
+    # Check if all vehicle types are selected (BEV, HFCV, HEV, ICEV)
+    if len(set(vehicles)) == 4:
+        # Upload to the "all" directory if all vehicle types are selected
+        all_vehicle_folder = os.path.join(base_folder, "all")
+        os.makedirs(all_vehicle_folder, exist_ok=True)
+        
+        # Save the file in the "all" directory
+        file_path = os.path.join(all_vehicle_folder, file.filename)
+        file.save(file_path)
+    else:
+        # Process each vehicle type individually
+        for vehicle in vehicles:
+            # Ensure the subdirectory exists for each vehicle
+            vehicle_folder = os.path.join(base_folder, vehicle)
+            os.makedirs(vehicle_folder, exist_ok=True)
 
-    # If the uploaded file is a Python script, try reloading it
-    if file.filename.endswith('.py'):
-        module_name = file.filename[:-3]  # Remove '.py' extension
-        module_path = file_path
+            # Save the file in the corresponding subdirectory
+            file_path = os.path.join(vehicle_folder, file.filename)
+            file.save(file_path)
 
-        # Load module dynamically
-        spec = importlib.util.spec_from_file_location(module_name, module_path)
-        if spec and spec.loader:
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            return jsonify({"message": "File uploaded and reloaded successfully", "path": file_path}), 200
-
-    return jsonify({"message": "File uploaded successfully", "path": file_path}), 200
+    return jsonify({"message": "File uploaded successfully to selected vehicles."}), 200
 
     
 @app.route('/api/estimate', methods=['POST'])
@@ -480,8 +491,6 @@ def estimate_energy():
             # Calculate energy consumption
             try:
                 result = getEnergy(vehicle_type_id, speed_data, param_list)
-                # print(result)
-                # print("result")
             except Exception as calc_error:
                 return jsonify({"error": f"Energy calculation failed: {str(calc_error)}"}), 400
             
@@ -743,53 +752,95 @@ def update_collection(collection_id):
         if conn:
             conn.close()
 
-@app.route('/api/metrics', methods=['GET'])
-def get_metrics():
-    """Get all metrics."""
+@app.route('/api/get_metric', methods=['GET'])
+def get_metric():
+    metric_id = request.args.get('id')
+    print("metric_id")
+    print(metric_id)
+    if not metric_id:
+        return jsonify({'error': 'Missing id parameter'}), 400
+
     try:
         conn = get_db_connection()
-        
-        # Fetch all metrics from the database
-        metrics = conn.execute('SELECT DISTINCT id, label, unit, color, valueKey FROM metrics').fetchall()
-        # If no metrics are found
-        if not metrics:
-            return jsonify({"message": "No metrics found"}), 404
-        
-        # Return the metrics in JSON format
-        return jsonify([{
-            'id': metric['id'],
-            'label': metric['label'],
-            'unit': metric['unit'],
-            'color': metric['color'],
-            'valueKey': metric['valueKey']
-        } for metric in metrics]), 200
-    
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT * FROM metrics WHERE id = ?", (metric_id,))
+        row = cursor.fetchone()
+        print("rows")
+        print(row)
+        conn.close()
+
+        if row:
+            result = {
+                'valueKey': row[4]
+            }
+            print("model backend")
+            print(result)
+            return jsonify(result)
+        else:
+            return jsonify({'error': 'Metric not found'}), 404
     except Exception as e:
-        print("Error occurred:")
-        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/metrics', methods=['GET'])
+def get_metrics():
+    engine_type = request.args.get('engineType')
+    try:
+        conn = get_db_connection()
+        if engine_type:
+            # Fixed query with table alias to avoid column name ambiguity
+            metrics = conn.execute(
+                'SELECT DISTINCT m.id, m.label, m.unit, m.color, m.valueKey, m.valid_engines '
+                'FROM metrics AS m, json_each(m.valid_engines) '
+                'WHERE json_each.value = ?',
+                (engine_type,)
+            ).fetchall()
+        else:
+            # Return all metrics if no engine_type is provided
+            metrics = conn.execute('SELECT id, label, unit, color, valueKey, valid_engines FROM metrics').fetchall()
+
+        if not metrics:
+            return jsonify([]), 200
+
+        return jsonify([dict(metric) for metric in metrics]), 200
+
+    except Exception as e:
+        print("Error occurred:", traceback.format_exc())
         return jsonify({"error": str(e)}), 500
-    
+
     finally:
-        if conn:
-            conn.close()
+        conn.close()
 
 @app.route('/api/metrics', methods=['POST'])
 def add_metric():
     """Add a new metric."""
     metric_name = request.form.get('metricName')
     metric_units = request.form.get('metricUnits')
+    valid_vehicles_old = request.form.get('validVehicles')
+    valid_vehicles_list = [vehicle.strip() for vehicle in valid_vehicles_old.split(',')]
+    valid_vehicles = '['
+    for index, vehicle in enumerate(valid_vehicles_list):
+        if index == len(valid_vehicles_list) - 1:
+            valid_vehicles = valid_vehicles + '"' + vehicle + '"'
+        else:
+            valid_vehicles = valid_vehicles + '"' + vehicle + '", '
+    valid_vehicles = valid_vehicles + "]"
+    metric_key = request.form.get('metricModel')
+    print(valid_vehicles)
     metric_id = metric_name.lower().replace(" ", "_")
     metric_color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
-    metric_key = "model"
     
     if not metric_name:
         return jsonify({"error": "Metric name is required"}), 400
     if not metric_units:
         return jsonify({"error": "Metric units are required"}), 400
+    if not valid_vehicles:
+        return jsonify({"error": "Valid vehicles are required"}), 400
+    
     try:
         conn = get_db_connection()
         
-        # Check if metric exist
+        # Check if metric exists
         existing_metric = conn.execute(
             'SELECT * FROM metrics WHERE label = ? AND unit = ?',
             (metric_name, metric_units)
@@ -800,9 +851,9 @@ def add_metric():
         
         # Insert new metric data into the database
         conn.execute(''' 
-            INSERT INTO metrics (id, label, unit, color, valueKey)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (metric_id, metric_name, metric_units, metric_color, metric_key))
+            INSERT INTO metrics (id, label, unit, color, valueKey, valid_engines)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (metric_id, metric_name, metric_units, metric_color, metric_key, valid_vehicles)) 
         
         conn.commit()
         
@@ -898,7 +949,8 @@ def download_collection(collection_id):
                 
                 try:
                     results = getEnergy(vehicle_id, speed_data, param_list)
-                    
+                    print("result get energy")
+                    print(results)
                     # Create vehicle-specific folder
                     folder = f"results/{vehicle_type}"
                     

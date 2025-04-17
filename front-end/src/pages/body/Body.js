@@ -21,278 +21,341 @@ const getProcessValueMap = () => ({
     fuel_economy: (v, speed) => speed > 0 ? (0.621371 / (v * 3.6)) : 0,
     power: (v) => Math.abs(Number(v)),
     energy_efficiency: (v, speed) => speed > 0 ? (0.621371 * speed) / (Math.abs(v) * 3600) : 0,
-    unknown: (v) => Number(v)
+    fuel_energy: (v) => Math.abs(Number(v)) * 9.3127778,
+    unknown: (v) => Number(v),
   });
-
-const getAvailableMetrics = async (data) => {
+  
+  const getAvailableMetrics = async (engineType, allVehicles = false) => {
     const metrics = [];
-
     const processValueMap = getProcessValueMap();
-
-    if (!data?.model) return metrics;
-
+  
+    if (!engineType && !allVehicles) return metrics;
+  
     try {
-        const res = await fetch('/api/metrics');
-        if (!res.ok) throw new Error(`API error: ${res.statusText}`);
-
-        const dbMetrics = await res.json();
-
-        for (const dbMetric of dbMetrics) {
-        const { id, label, unit, color, valueKey } = dbMetric;
-        const processValue = processValueMap[id] || ((v) => Number(v));
-
-        metrics.push({ id, label, unit, color, valueKey, processValue });
+      let url = '/api/metrics';
+  
+      // If we're fetching metrics for a specific engineType, add it to the query string
+      if (!allVehicles && engineType) {
+        const engineTypeParam = encodeURIComponent(engineType);
+        url = `${url}?engineType=${engineTypeParam}`;
+      }
+  
+  
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+      
+      // Only parse the response body once here
+      const dbMetrics = await res.json();
+  
+      for (const dbMetric of dbMetrics) {
+        const { id, label, unit, color, valueKey, valid_engines } = dbMetric;
+        
+        // If 'allVehicles' is true, skip engine type filtering. Otherwise, check if the engineType is in valid_engines.
+        if (allVehicles || (valid_engines && valid_engines.includes(engineType))) {
+          const processValue = processValueMap[id] || processValueMap['unknown'];
+  
+          metrics.push({ id, label, unit, color, valueKey, processValue });
         }
-
-        return metrics;
-
+      }
+  
+      return metrics;
     } catch (err) {
-        console.error('Failed to fetch metrics:', err);
-        return [];
+      console.error('Failed to fetch metrics:', err);
+      return [];
     }
-};
+  };
 
-const EnergyChart = ({ data, speedProfile }) => {
+  async function getValueKeyById(id) {
+    try {
+        const idParam = encodeURIComponent(id);
+        const response = await fetch(`/api/get_metric?id=${idParam}`);
+        
+        const data = await response.json();
+
+        if (response.ok) {
+            return data.valueKey; 
+        } else {
+            console.error('Error fetching metric:', data.error);
+            return null;
+        }
+    } catch (error) {
+        console.error('Fetch error:', error);
+        return null;
+    }
+}
+
+const EnergyChart = ({ data, engineType, speedProfile }) => {
     const [availableMetrics, setAvailableMetrics] = useState([]);
     const [selectedMetric, setSelectedMetric] = useState('');
     const [visualizationType, setVisualizationType] = useState('binned');
     const [binSize, setBinSize] = useState(1);
-    const [windowSize, setWindowSize] = useState(50);
+    const [windowSize, setWindowSize] = useState(1); // assuming you had a default
     const [samplingRate, setSamplingRate] = useState(10);
-    
-    // Fetch metrics when engineType or data changes
+    const [processChartData, setProcessedChartData] = useState([]);
+
     useEffect(() => {
-      const fetchMetrics = async () => {
-        if (!data?.model) return;
-    
-        const metrics = await getAvailableMetrics(data); // no engineType needed unless you're still overriding color
+        const fetchMetrics = async () => {
+        if (!engineType) return;
+
+        const metrics = await getAvailableMetrics(engineType);
         setAvailableMetrics(metrics);
-    
+
         if (metrics.length > 0) {
-          setSelectedMetric(metrics[0].id);
+            setSelectedMetric(metrics[0].id);
         }
-      };
-    
-      fetchMetrics();
-    }, [data]);
+        };
 
-  const processChartData = useMemo(() => {
-    if (!data?.model || !speedProfile || !selectedMetric) return [];
-    
-    const metricConfig = availableMetrics.find(m => m.id === selectedMetric);
-    if (!metricConfig) return [];
+        fetchMetrics();
+    }, [engineType]);
 
-    switch (visualizationType) {
-      case 'binned': {
-        const binnedData = new Map();
-        speedProfile.forEach((speed, index) => {
-          if (speed > 0) {
-            const binKey = Math.floor(speed / binSize) * binSize;
-            if (!binnedData.has(binKey)) {
-              binnedData.set(binKey, {
-                speed: binKey,
-                values: [],
-                count: 0
-              });
+    useEffect(() => {
+        const processChartData = async () => {
+            if (!data?.model || !speedProfile || !selectedMetric) {
+                setProcessedChartData([]);
+                return;
             }
-            const value = metricConfig.processValue(data.model[index], speed);
-            if (!isNaN(value) && isFinite(value)) {
-              const bin = binnedData.get(binKey);
-              bin.values.push(value);
-              bin.count++;
+            const metricConfig = availableMetrics.find(m => m.id === selectedMetric);
+            if (!metricConfig) {
+                setProcessedChartData([]);
+                return;
             }
-          }
-        });
+    
+            const getFilteredEstimationDataSeperate = async (estimationResults, config) => {
+                const filtered = {};
+                const selectedUnit = config.unit;
+                const id = config.id;
+                const engineResult = estimationResults;
+    
+                if (engineResult[selectedUnit] !== undefined) {
+                    filtered[selectedUnit] = engineResult[selectedUnit];
+                    const model_str = await getValueKeyById(id);
+                    filtered.model = engineResult[model_str];
+                }
+    
+                return filtered;
+            };
+    
+            const newData = await getFilteredEstimationDataSeperate(data, metricConfig);
+    
+            let result = [];
+    
+            switch (visualizationType) {
+                case 'binned': {
+                    const binnedData = new Map();
+                    speedProfile.forEach((speed, index) => {
+                        if (speed > 0) {
+                            const binKey = Math.floor(speed / binSize) * binSize;
+                            if (!binnedData.has(binKey)) {
+                                binnedData.set(binKey, {
+                                    speed: binKey,
+                                    values: [],
+                                    count: 0
+                                });
+                            }
+    
+                            const value = metricConfig.processValue(newData.model[index], speed);
+                            if (!isNaN(value) && isFinite(value)) {
+                                const bin = binnedData.get(binKey);
+                                bin.values.push(value);
+                                bin.count++;
+                            }
+                        }
+                    });
+    
+                    result = Array.from(binnedData.entries())
+                        .map(([speed, bin]) => ({
+                            speed,
+                            value: bin.values.reduce((sum, val) => sum + val, 0) / bin.count,
+                            min: Math.min(...bin.values),
+                            max: Math.max(...bin.values),
+                            count: bin.count
+                        }))
+                        .filter(point => point.count > 0)
+                        .sort((a, b) => a.speed - b.speed);
+                    break;
+                }
+    
+                case 'moving': {
+                    const validPoints = speedProfile
+                        .map((speed, index) => ({
+                            speed,
+                            value: metricConfig.processValue(newData.model[index], speed)
+                        }))
+                        .filter(point => point.speed > 0 && !isNaN(point.value) && isFinite(point.value));
+    
+                    const movingAverage = [];
+                    for (let i = 0; i < validPoints.length; i += windowSize) {
+                        const start = Math.max(0, i - windowSize / 2);
+                        const end = Math.min(validPoints.length, i + windowSize / 2);
+                        const windowPoints = validPoints.slice(start, end);
+    
+                        if (windowPoints.length > 0) {
+                            movingAverage.push({
+                                speed: validPoints[i].speed,
+                                value: windowPoints.reduce((sum, p) => sum + p.value, 0) / windowPoints.length
+                            });
+                        }
+                    }
+    
+                    result = movingAverage.sort((a, b) => a.speed - b.speed);
+                    break;
+                }
+    
+                case 'sampled': {
+                    result = speedProfile
+                        .filter((_, index) => index % samplingRate === 0)
+                        .map((speed, index) => ({
+                            speed,
+                            value: metricConfig.processValue(newData.model[index * samplingRate], speed)
+                        }))
+                        .filter(point => point.speed > 0 && !isNaN(point.value) && isFinite(point.value))
+                        .sort((a, b) => a.speed - b.speed);
+                    break;
+                }
+    
+                default:
+                    result = [];
+            }
+    
+            setProcessedChartData(result);
+        };
+    
+        processChartData();
+    }, [data, speedProfile, selectedMetric, visualizationType, binSize, windowSize, samplingRate, availableMetrics]);
+    
 
-        return Array.from(binnedData.entries())
-          .map(([speed, bin]) => ({
-            speed,
-            value: bin.values.reduce((sum, val) => sum + val, 0) / bin.count,
-            min: Math.min(...bin.values),
-            max: Math.max(...bin.values),
-            count: bin.count
-          }))
-          .filter(point => point.count > 0)
-          .sort((a, b) => a.speed - b.speed);
-      }
+    const CustomTooltip = ({ active, payload, label }) => {
+        if (!active || !payload || !payload.length) return null;
 
-      case 'moving': {
-        const validPoints = speedProfile
-          .map((speed, index) => ({
-            speed,
-            value: metricConfig.processValue(data.model[index], speed)
-          }))
-          .filter(point => point.speed > 0 && !isNaN(point.value) && isFinite(point.value));
-
-        const movingAverage = [];
-        for (let i = 0; i < validPoints.length; i += windowSize) {
-          const start = Math.max(0, i - windowSize / 2);
-          const end = Math.min(validPoints.length, i + windowSize / 2);
-          const windowPoints = validPoints.slice(start, end);
-          
-          if (windowPoints.length > 0) {
-            movingAverage.push({
-              speed: validPoints[i].speed,
-              value: windowPoints.reduce((sum, p) => sum + p.value, 0) / windowPoints.length
-            });
-          }
-        }
-        return movingAverage.sort((a, b) => a.speed - b.speed);
-      }
-
-      case 'sampled': {
-        return speedProfile
-          .filter((_, index) => index % samplingRate === 0)
-          .map((speed, index) => ({
-            speed,
-            value: metricConfig.processValue(data.model[index * samplingRate], speed)
-          }))
-          .filter(point => point.speed > 0 && !isNaN(point.value) && isFinite(point.value))
-          .sort((a, b) => a.speed - b.speed);
-      }
-
-      default:
-        return [];
+        const metric = availableMetrics.find(m => m.id === selectedMetric);
+        return (
+        <div className="custom-tooltip">
+            <p>Speed: {label} km/h</p>
+            <p>{metric.label}: {payload[0].value.toFixed(4)} {metric.unit}</p>
+            {visualizationType === 'binned' && (
+            <div>
+                <p>Min: {payload[0].payload.min?.toFixed(4)}</p>
+                <p>Max: {payload[0].payload.max?.toFixed(4)}</p>
+                <p>Sample Size: {payload[0].payload.count}</p>
+            </div>
+            )}
+        </div>
+        );
+    };
+    // console.log("SELECTED METRIC")
+    // console.log(selectedMetric)
+    // console.log(processChartData)
+    // console.log(processChartData.length)
+    if (!selectedMetric || processChartData.length === 0) {
+        return <div className="no-data-message">No data available for visualization</div>;
     }
-  }, [data, speedProfile, selectedMetric, visualizationType, binSize, windowSize, samplingRate, availableMetrics]);
 
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (!active || !payload || !payload.length) return null;
+    const selectedMetricConfig = availableMetrics.find(m => m.id === selectedMetric);
 
-    const metric = availableMetrics.find(m => m.id === selectedMetric);
     return (
-      <div className="custom-tooltip">
-        <p>Speed: {label} km/h</p>
-        <p>{metric.label}: {payload[0].value.toFixed(4)} {metric.unit}</p>
-        {visualizationType === 'binned' && (
-          <div>
-            <p>Min: {payload[0].payload.min?.toFixed(4)}</p>
-            <p>Max: {payload[0].payload.max?.toFixed(4)}</p>
-            <p>Sample Size: {payload[0].payload.count}</p>
-          </div>
-        )}
-      </div>
+        <div className="chart-container">
+            {/* TODO Change the original Chart Controls*/}
+            {/* TODO Ask if we still even need this? */}
+            <div className="chart-controls">
+                <div className="control-group">
+                    <label>Metric:</label>
+                    <select 
+                        value={selectedMetric} 
+                        onChange={(e) => setSelectedMetric(e.target.value)}
+                        className="metric-select"
+                    >
+                        {availableMetrics.map(metric => (
+                            <option key={metric.id} value={metric.id}>
+                                {metric.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="control-group">
+                    <label>View Type:</label>
+                    <select 
+                        value={visualizationType} 
+                        onChange={(e) => setVisualizationType(e.target.value)}
+                        className="visualization-select"
+                    >
+                        <option value="binned">Speed Bins</option>
+                        <option value="moving">Moving Average</option>
+                        <option value="sampled">Sampled Data</option>
+                    </select>
+                </div>
+
+                {visualizationType === 'binned' && (
+                    <div className="control-group">
+                        <label>Bin Size (km/h):</label>
+                        <input
+                            type="number"
+                            min="1"
+                            max="20"
+                            value={binSize}
+                            onChange={(e) => setBinSize(Number(e.target.value))}
+                            className="control-input"
+                        />
+                    </div>
+                )}
+
+                {visualizationType === 'moving' && (
+                    <div className="control-group">
+                        <label>Window Size:</label>
+                        <input
+                            type="number"
+                            min="10"
+                            max="200"
+                            step="10"
+                            value={windowSize}
+                            onChange={(e) => setWindowSize(Number(e.target.value))}
+                            className="control-input"
+                        />
+                    </div>
+                )}
+
+                {visualizationType === 'sampled' && (
+                    <div className="control-group">
+                        <label>Sample Rate:</label>
+                        <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={samplingRate}
+                            onChange={(e) => setSamplingRate(Number(e.target.value))}
+                            className="control-input"
+                        />
+                    </div>
+                )}
+            </div>
+            <div className="chart-wrapper">
+                {/* Plotly plot */}
+                <Plot
+                    data={[{
+                        x: processChartData.map(point => point.speed),
+                        y: processChartData.map(point => point.value),
+                        type: 'scatter',
+                        mode: 'lines', // Just lines, markers produce some clutter
+                        line: { width: 2 },
+                        marker: { color: selectedMetricConfig.color },
+                    }]}
+                    layout={{ 
+                        margin: { t: 30, r: 30, l: 60, b: 35 },
+                        title: { text: `${selectedMetricConfig.label} vs Speed`, x: 0.5, xanchor: 'center' },
+                        yaxis: { title: { text: `${selectedMetricConfig.label} (${selectedMetricConfig.unit})` } },
+                        xaxis: { title: { text: 'Speed (km/h)' } },
+                        autosize: true,
+                    }}
+                    config={{
+                        displayModeBar: false,
+                        responsive: true,
+                    }}
+                    useResizeHandler
+                    style={{ width: '100%', height: '100%' }}
+                />
+            </div>
+        </div>
     );
-  };
-
-  if (!selectedMetric || processChartData.length === 0) {
-    return <div className="no-data-message">No data available for visualization</div>;
-  }
-
-  const selectedMetricConfig = availableMetrics.find(m => m.id === selectedMetric);
-
-  return (
-    <div className="chart-container">
-      {/* TODO Change the original Chart Controls*/}
-      {/* TODO Ask if we still even need this? */}
-      <div className="chart-controls">
-        <div className="control-group">
-          <label>Metric:</label>
-          <select 
-            value={selectedMetric} 
-            onChange={(e) => setSelectedMetric(e.target.value)}
-            className="metric-select"
-          >
-            {availableMetrics.map(metric => (
-              <option key={metric.id} value={metric.id}>
-                {metric.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="control-group">
-          <label>View Type:</label>
-          <select 
-            value={visualizationType} 
-            onChange={(e) => setVisualizationType(e.target.value)}
-            className="visualization-select"
-          >
-            <option value="binned">Speed Bins</option>
-            <option value="moving">Moving Average</option>
-            <option value="sampled">Sampled Data</option>
-          </select>
-        </div>
-
-        {visualizationType === 'binned' && (
-          <div className="control-group">
-            <label>Bin Size (km/h):</label>
-            <input
-              type="number"
-              min="1"
-              max="20"
-              value={binSize}
-              onChange={(e) => setBinSize(Number(e.target.value))}
-              className="control-input"
-            />
-          </div>
-        )}
-
-        {visualizationType === 'moving' && (
-          <div className="control-group">
-            <label>Window Size:</label>
-            <input
-              type="number"
-              min="10"
-              max="200"
-              step="10"
-              value={windowSize}
-              onChange={(e) => setWindowSize(Number(e.target.value))}
-              className="control-input"
-            />
-          </div>
-        )}
-
-        {visualizationType === 'sampled' && (
-          <div className="control-group">
-            <label>Sample Rate:</label>
-            <input
-              type="number"
-              min="1"
-              max="100"
-              value={samplingRate}
-              onChange={(e) => setSamplingRate(Number(e.target.value))}
-              className="control-input"
-            />
-          </div>
-        )}
-        {/* New "Add New Metric" button */}
-        {/* <div className="control-group">
-          <button className="add-metric-button" onClick={() => alert("Add New Metric clicked")}>
-            Add New Metric
-          </button>
-        </div> */}
-      </div>
-      <div className="chart-wrapper">
-      {/*Ploty plot*/}
-      <Plot
-            data={[
-              {
-                x: processChartData.map(point => point.speed), // I think this may be an ISSUE
-                y: processChartData.map(point => point.value),
-                type: 'scatter',
-                mode: 'lines', // Just lines, markers produce some clutter
-                line: { width: 2 },
-                marker: {color: selectedMetricConfig.color},
-              },
-            ]}
-            layout={{ 
-              margin: { t: 30, r: 30, l: 60, b: 35 }, 
-              title: {text: `${selectedMetricConfig.label} vs Speed`, x: 0.5, xanchor: 'center'},
-              yaxis: { title: { text: `${selectedMetricConfig.label} (${selectedMetricConfig.unit})` } },
-              xaxis: { title: { text: 'Speed (km/h)' } },
-              autosize: true, // Allow for autosizing with window
-            }}
-            config={{
-              displayModeBar: false, // Removes plotly builtin in menu bar
-              responsive: true, // Allows resizing
-            }}
-            useResizeHandler
-            style={{ width: '100%', height: '100%' }}
-          />
-      </div>
-    </div>
-  );
 };
 
 const CombinedEnergyChart = ({ estimationResults, collection }) => {
@@ -302,33 +365,37 @@ const CombinedEnergyChart = ({ estimationResults, collection }) => {
     const [binSize, setBinSize] = useState(5);
     const [windowSize, setWindowSize] = useState(50);
     const [samplingRate, setSamplingRate] = useState(10);
+    const [combinedData, setCombinedData] = useState([]);
 
     
     const validEnginesArray = useMemo(
       () => Object.values(estimationResults).filter(engine => engine != null),
       [estimationResults]
     );
-    // console.log("VALID ENGINES ARRAY")
-    // console.log(validEnginesArray)
     const firstEngine = validEnginesArray[0];
     
     useEffect(() => {
-      const fetchMetrics = async () => {
-        if (!firstEngine?.model) {
-          setAvailableMetrics([]);
-          return;
-        }
-    
-        const metrics = await getAvailableMetrics(firstEngine); // async call
-        setAvailableMetrics(metrics);
-    
-        // Auto-select first metric if none is selected
-        if (metrics.length > 0 && !selectedMetric) {
-          setSelectedMetric(metrics[0].id);
-        }
-      };
-      fetchMetrics();
-    }, [firstEngine]); // runs when the first valid engine changes
+        const fetchMetrics = async () => {
+          if (!firstEngine?.model) {
+            setAvailableMetrics([]);
+            return;
+          }
+        
+          // Assuming you want to pass the flag based on some condition
+          const allVehiclesFlag = true; // or false, depending on your condition
+          
+          const metrics = await getAvailableMetrics(firstEngine.model, allVehiclesFlag); // async call with flag
+          setAvailableMetrics(metrics);
+        
+          // Auto-select first metric if none is selected
+          if (metrics.length > 0 && !selectedMetric) {
+            setSelectedMetric(metrics[0].id);
+          }
+        };
+      
+        fetchMetrics();
+      }, [firstEngine, selectedMetric]); // re-runs when `firstEngine` or `selectedMetric` changes
+
     useEffect(() => {
       // This ensures selectedMetric stays in sync with new availableMetrics
       if (availableMetrics.length > 0 && !selectedMetric) {
@@ -336,15 +403,18 @@ const CombinedEnergyChart = ({ estimationResults, collection }) => {
       }
     }, [availableMetrics, selectedMetric]);
 
-    const getFilteredEstimationData = (estimationResults, selectedUnit) => {
+    const getFilteredEstimationData = async (estimationResults, config) => {
         const filtered = {};
+        const selectedUnit = config.unit
+        const id = config.id
+        const model_str = await getValueKeyById(id);
         
         Object.entries(estimationResults)
             .filter(([_, engineResult]) => engineResult != null)
             .forEach(([engineId, engineResult]) => {
             if (engineResult[selectedUnit] !== undefined) {
                 filtered[engineId] = {
-                model: engineResult.model,
+                model: engineResult[model_str],
                 [selectedUnit]: engineResult[selectedUnit]
                 };
             }
@@ -353,90 +423,117 @@ const CombinedEnergyChart = ({ estimationResults, collection }) => {
         return filtered;
     };
 
-    const combinedData = useMemo(() => {
-        if (!collection?.speed_profile || !selectedMetric) return [];
-        const mergedData = {};
-        const speedProfile = collection.speed_profile;
-        const metricConfig = availableMetrics.find(m => m.id === selectedMetric);
-        if (!metricConfig) return [];
-        
-        const filteredEstimation = getFilteredEstimationData(estimationResults, metricConfig.unit);
-        
-        Object.entries(filteredEstimation)
-            .filter(([id, engineResult]) => engineResult != null)
-            .forEach(([engineId, engineResult]) => {
-            let processed = [];
-        
-            switch (visualizationType) {
-                case 'binned': {
-                const binnedData = new Map();
-                speedProfile.forEach((speed, index) => {
-                    if (speed > 0) {
-                    const binKey = Math.floor(speed / binSize) * binSize;
-                    if (!binnedData.has(binKey)) {
-                        binnedData.set(binKey, { values: [], count: 0 });
-                    }
-                    const value = metricConfig.processValue(engineResult.model[index], speed);
-                    if (!isNaN(value) && isFinite(value)) {
-                        const bin = binnedData.get(binKey);
-                        bin.values.push(value);
-                        bin.count++;
-                    }
-                    }
-                });
-                processed = Array.from(binnedData.entries()).map(([speed, bin]) => ({
-                    speed,
-                    value: bin.values.reduce((sum, v) => sum + v, 0) / bin.count,
-                    count: bin.count
-                }));
-                break;
-                }
-                case 'moving': {
-                const validPoints = speedProfile
-                    .map((speed, index) => ({
-                    speed,
-                    value: metricConfig.processValue(engineResult.model[index], speed)
-                    }))
-                    .filter(point => point.speed > 0 && !isNaN(point.value) && isFinite(point.value));
-                const movingAverage = [];
-                for (let i = 0; i < validPoints.length; i += windowSize) {
-                    const start = Math.max(0, i - windowSize / 2);
-                    const end = Math.min(validPoints.length, i + windowSize / 2);
-                    const windowPoints = validPoints.slice(start, end);
-                    if (windowPoints.length > 0) {
-                    movingAverage.push({
-                        speed: validPoints[i].speed,
-                        value: windowPoints.reduce((sum, p) => sum + p.value, 0) / windowPoints.length
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!collection?.speed_profile || !selectedMetric) return;
+    
+            const mergedData = {};
+            const speedProfile = collection.speed_profile;
+            const metricConfig = availableMetrics.find(m => m.id === selectedMetric);
+    
+            // console.log("METRIC CONFIG");
+            // console.log(metricConfig);
+            // console.log("ESTIMATION");
+            // console.log(estimationResults);
+    
+            if (!metricConfig) return;
+    
+            try {
+                const filteredEstimation = await getFilteredEstimationData(estimationResults, metricConfig);
+                // console.log("FILTERED");
+                // console.log(filteredEstimation);
+    
+                Object.entries(filteredEstimation)
+                    .filter(([id, engineResult]) => engineResult != null)
+                    .forEach(([engineId, engineResult]) => {
+                        let processed = [];
+    
+                        switch (visualizationType) {
+                            case 'binned': {
+                                const binnedData = new Map();
+                                speedProfile.forEach((speed, index) => {
+                                    if (speed > 0) {
+                                        const binKey = Math.floor(speed / binSize) * binSize;
+                                        if (!binnedData.has(binKey)) {
+                                            binnedData.set(binKey, { values: [], count: 0 });
+                                        }
+                                        const value = metricConfig.processValue(engineResult.model[index], speed);
+                                        if (!isNaN(value) && isFinite(value)) {
+                                            const bin = binnedData.get(binKey);
+                                            bin.values.push(value);
+                                            bin.count++;
+                                        }
+                                    }
+                                });
+                                processed = Array.from(binnedData.entries()).map(([speed, bin]) => ({
+                                    speed,
+                                    value: bin.values.reduce((sum, v) => sum + v, 0) / bin.count,
+                                    count: bin.count
+                                }));
+                                break;
+                            }
+                            case 'moving': {
+                                const validPoints = speedProfile
+                                    .map((speed, index) => ({
+                                        speed,
+                                        value: metricConfig.processValue(engineResult.model[index], speed)
+                                    }))
+                                    .filter(point => point.speed > 0 && !isNaN(point.value) && isFinite(point.value));
+    
+                                const movingAverage = [];
+                                for (let i = 0; i < validPoints.length; i += windowSize) {
+                                    const start = Math.max(0, i - windowSize / 2);
+                                    const end = Math.min(validPoints.length, i + windowSize / 2);
+                                    const windowPoints = validPoints.slice(start, end);
+                                    if (windowPoints.length > 0) {
+                                        movingAverage.push({
+                                            speed: validPoints[i].speed,
+                                            value: windowPoints.reduce((sum, p) => sum + p.value, 0) / windowPoints.length
+                                        });
+                                    }
+                                }
+                                processed = movingAverage;
+                                break;
+                            }
+                            case 'sampled': {
+                                processed = speedProfile
+                                    .filter((_, index) => index % samplingRate === 0)
+                                    .map((speed, index) => ({
+                                        speed,
+                                        value: metricConfig.processValue(engineResult.model[index * samplingRate], speed)
+                                    }))
+                                    .filter(point => point.speed > 0 && !isNaN(point.value) && isFinite(point.value));
+                                break;
+                            }
+                            default:
+                                processed = [];
+                        }
+    
+                        processed.forEach(point => {
+                            if (!mergedData[point.speed]) {
+                                mergedData[point.speed] = { speed: point.speed };
+                            }
+                            mergedData[point.speed][engineId] = point.value;
+                        });
                     });
-                    }
-                }
-                processed = movingAverage;
-                break;
-                }
-                case 'sampled': {
-                processed = speedProfile
-                    .filter((_, index) => index % samplingRate === 0)
-                    .map((speed, index) => ({
-                    speed,
-                    value: metricConfig.processValue(engineResult.model[index * samplingRate], speed)
-                    }))
-                    .filter(point => point.speed > 0 && !isNaN(point.value) && isFinite(point.value));
-                break;
-                }
-                default:
-                processed = [];
+    
+                setCombinedData(Object.values(mergedData).sort((a, b) => a.speed - b.speed));
+            } catch (error) {
+                console.error("Error fetching filtered estimation data:", error);
             }
-        
-            processed.forEach(point => {
-                if (!mergedData[point.speed]) {
-                mergedData[point.speed] = { speed: point.speed };
-                }
-                mergedData[point.speed][engineId] = point.value;
-            });
-            });
-        
-        return Object.values(mergedData).sort((a, b) => a.speed - b.speed);
-  }, [estimationResults, collection, selectedMetric, visualizationType, binSize, windowSize, samplingRate, availableMetrics]);
+        };
+    
+        fetchData();
+    }, [
+        estimationResults,
+        collection,
+        selectedMetric,
+        visualizationType,
+        binSize,
+        windowSize,
+        samplingRate,
+        availableMetrics
+    ]);
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload || !payload.length) return null;
@@ -569,6 +666,9 @@ function Body({ isSidebarOpen }) {
         const response = await fetch(`/api/collections/${collectionId}`);
         if (!response.ok) throw new Error('Failed to fetch collection');
         const data = await response.json();
+        console.log("RESPONSE")
+        console.log(data.results)
+
         setCollection(data);
         
         const convertedResults = {};
@@ -603,8 +703,11 @@ function Body({ isSidebarOpen }) {
           engineType: newResult.engineType || 'Unknown'
         };
       }
+      
       return updatedResults;
     });
+    // console.log("results")
+    // console.log(newResult)
   };
 
   if (loading) {

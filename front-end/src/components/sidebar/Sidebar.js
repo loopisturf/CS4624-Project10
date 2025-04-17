@@ -159,7 +159,6 @@ const Sidebar = ({ isOpen, setEstimationResult, collectionId, viewMode, setViewM
           ...data,
           engineType: engineTypes.find(type => type.id === engineId)?.name
         };
-        
         // Update results in parent and local state
         setEstimationResult(engineId, result);
         setEstimationResults(prev => ({
