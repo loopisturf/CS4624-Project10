@@ -33,12 +33,15 @@ CREATE TABLE IF NOT EXISTS collections (
     FOREIGN KEY (username) REFERENCES users (username)
 );
 
+DROP TABLE IF EXISTS metrics;
+
+
 CREATE TABLE IF NOT EXISTS metrics (
     id TEXT,
     label TEXT,
     unit TEXT,
     color TEXT,
-    valueKey TEXT
+    valueKey TEXT,
     valid_engines TEXT
 );
 
