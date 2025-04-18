@@ -162,11 +162,14 @@ def getEnergy(selection, speed_data, param_list):
     accel[1:] = v[1:] - v[:-1]  
 
     # Unpack parameters
-    (var01, powertrain, veh_mass, Veh_length, Prop_trac_axle, coef_friction,
-     Eng_Power, Max_Power, Effi_trans, Cd, Af, Cr, c1, c2, Pedal_input,
-     Gr1, Gr2, Effi_batt_ev, Min_SOC, Max_SOC, start_SOC, Effi_ev_motor,
-     Effi_regen, SOC_limit_PHEV_s, Batt_capacity, Aux_consumption,
-     Alpha_0, Alpha_1, Alpha_2, Alpha_3) = map(float, param_list)
+    (veh_mass, Veh_length, Prop_trac_axle, coef_friction,
+     Eng_Power, Max_Power, Effi_trans, Cd, Af, Cr,
+     c1, c2, Pedal_input, Gr1, Gr2, Effi_batt_ev,
+     Min_SOC, Max_SOC, start_SOC, Effi_ev_motor,
+     Effi_regen, SOC_limit_PHEV_s, Batt_capacity,
+     Aux_consumption, Alpha_0, Alpha_1, Alpha_2, Alpha_3
+    ) = map(float, param_list)
+
 
     # Vehicle and battery parameters
     m = veh_mass

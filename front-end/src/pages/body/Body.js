@@ -597,6 +597,16 @@ function Body({ isSidebarOpen }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('metrics');
+  const [vehicleParams, setVehicleParams] = useState([]);
+  useEffect(() => {
+    fetch('/api/vehicle-params')
+      .then(r => r.json())
+      .then(setVehicleParams)
+      .catch(console.error);
+  }, []);
+
+  // 2) Track which car‑IDs are checked in the sidebar
+  const [selectedCars, setSelectedCars] = useState([]);
 
   useEffect(() => {
     const fetchCollection = async () => {
@@ -670,6 +680,9 @@ function Body({ isSidebarOpen }) {
         collectionId={collectionId}
         viewMode={viewMode}
         setViewMode={setViewMode}
+        vehicleParams={vehicleParams}       
+        selectedCars={selectedCars}         
+        setSelectedCars={setSelectedCars}   
       />
       <div className={`body-content ${isSidebarOpen ? 'sidebar-open' : ''}`}>
         {collection && (
@@ -682,15 +695,17 @@ function Body({ isSidebarOpen }) {
           {viewMode === 'combined' ? (
             <CombinedEnergyChart estimationResults={estimationResults} collection={collection} />
           ) : viewMode === 'charts' ? (
-            Object.entries(estimationResults)
-              .filter(([id, result]) => result != null)
-              .map(([id, result]) => (
-                <div key={id} className="result-card">
+            // only render charts for cars the user has selected
+            selectedCars
+              .map(carId => estimationResults[carId])
+              .filter(result => result != null)
+              .map(result => (
+                <div key={result.engineType + result.timestamp} className="result-card">
                   <h2 className="result-title">{result.engineType}</h2>
                   <EnergyChart
                     data={result}
                     engineType={result.engineType}
-                    speedProfile={collection?.speed_profile}
+                    speedProfile={collection.speed_profile}
                   />
                 </div>
               ))

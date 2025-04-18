@@ -14,10 +14,13 @@ CREATE TABLE IF NOT EXISTS vehicle_types (
 );
 
 CREATE TABLE IF NOT EXISTS vehicle_params (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    vehicle_type_id INTEGER NOT NULL,
-    param_string TEXT NOT NULL,
-    FOREIGN KEY (vehicle_type_id) REFERENCES vehicle_types (id)
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  vehicle_type_id INTEGER NOT NULL,
+  make TEXT    NOT NULL,
+  model TEXT   NOT NULL,
+  year INTEGER NOT NULL,
+  param_string TEXT NOT NULL,
+  FOREIGN KEY (vehicle_type_id) REFERENCES vehicle_types (id)
 );
 
 CREATE TABLE IF NOT EXISTS collections (

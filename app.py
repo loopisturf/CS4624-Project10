@@ -300,26 +300,97 @@ def delete_vehicle_type(type_id):
 @app.route('/api/vehicle-params', methods=['GET'])
 def get_vehicle_params():
     conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    query = """
-        SELECT vehicle_params.id, vehicle_types.type_name, vehicle_params.param_string
-        FROM vehicle_params
-        JOIN vehicle_types ON vehicle_params.vehicle_type_id = vehicle_types.id;
-    """
-    cursor.execute(query)
-    vehicle_params = cursor.fetchall()
+    rows = conn.execute("""
+      SELECT 
+        vp.id,
+        vp.make,
+        vp.model,
+        vp.year,
+        vt.type_name AS vehicle_type,
+        vp.param_string
+      FROM vehicle_params vp
+      JOIN vehicle_types vt ON vp.vehicle_type_id = vt.id
+      ORDER BY vp.id
+    """).fetchall()
     conn.close()
-    
-    result = [
-        {
-            "id": param[0],
-            "type_name": param[1],
-            "param_string": param[2]
-        }
-        for param in vehicle_params
-    ]
-    return jsonify(result)
+    return jsonify([
+      {
+        "id": r["id"],
+        "make": r["make"],
+        "model": r["model"],
+        "year": r["year"],
+        "vehicle_type": r["vehicle_type"],
+        "param_string": r["param_string"]
+      }
+      for r in rows
+    ])
+        
+# POST /api/admin/vehicle-params
+@app.route('/api/admin/vehicle-params', methods=['POST'])
+@admin_required
+def create_vehicle_param():
+    data = request.json
+    for f in ("make","model","year","vehicle_type_id","param_string"):
+        if f not in data:
+            return jsonify({"error": f"{f} is required"}), 400
+
+    try:
+        year = int(data["year"])
+        vt_id = int(data["vehicle_type_id"])
+    except:
+        return jsonify({"error":"year and vehicle_type_id must be integers"}), 400
+
+    conn = get_db_connection()
+    try:
+        cursor = conn.execute("""
+          INSERT INTO vehicle_params
+            (vehicle_type_id, make, model, year, param_string)
+          VALUES (?, ?, ?, ?, ?)
+        """, (
+          vt_id,
+          data["make"].strip(),
+          data["model"].strip(),
+          year,
+          data["param_string"].strip()
+        ))
+        conn.commit()
+        new_id = cursor.lastrowid
+        return jsonify({**data, "id": new_id}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+# PUT /api/admin/vehicle-params/<int:param_id>
+@app.route('/api/admin/vehicle-params/<int:param_id>', methods=['PUT'])
+@admin_required
+def update_vehicle_param(param_id):
+    data = request.json
+    # same validation...
+    conn = get_db_connection()
+    try:
+        conn.execute("""
+          UPDATE vehicle_params
+          SET make        = ?,
+              model       = ?,
+              year        = ?,
+              vehicle_type_id = ?,
+              param_string    = ?
+          WHERE id = ?
+        """, (
+          data["make"].strip(),
+          data["model"].strip(),
+          int(data["year"]),
+          int(data["vehicle_type_id"]),
+          data["param_string"].strip(),
+          param_id
+        ))
+        conn.commit()
+        return jsonify({"message":"Updated"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
 
 @app.route('/api/admin/clear-vehicle-params', methods=['POST'])
 @admin_required
@@ -348,9 +419,9 @@ def upload_vehicle_params():
             conn = get_db_connection()
             content = file.read().decode('utf-8')
             
-            # Engine type to vehicle type mapping
+            # Engine type to vehicle type mapping (unchanged)
             engine_to_vehicle = {
-                1: 1,  # ICEV (Gas/Diesel)
+                1: 1,  # ICEV
                 3: 2,  # BEV
                 6: 3,  # HEV
                 7: 4   # HFCV
@@ -358,24 +429,26 @@ def upload_vehicle_params():
             
             # Start transaction
             conn.execute('BEGIN TRANSACTION')
-            
-            # Clear existing parameters and reset sequence
+            # Clear existing records and reset sequence
             conn.execute('DELETE FROM vehicle_params')
             conn.execute('DELETE FROM sqlite_sequence WHERE name = "vehicle_params"')
             
-            # Insert new parameters
             for line in content.splitlines():
                 if line.strip() and not line.startswith('#'):
-                    params = line.strip().split()
-                    if len(params) == 30:  # Verify we have all 30 parameters
-                        engine_type = int(params[1])
-                        if engine_type in engine_to_vehicle:
-                            vehicle_type_id = engine_to_vehicle[engine_type]
-                            param_string = ' '.join(params)
-                            conn.execute(
-                                'INSERT INTO vehicle_params (vehicle_type_id, param_string) VALUES (?, ?)',
-                                (vehicle_type_id, param_string)
-                            )
+                    tokens = line.strip().split()
+                    if len(tokens) == 32:
+                        make = tokens[0]
+                        model = tokens[1]
+                        year = int(tokens[2])
+                        engine = int(tokens[3])
+                        if engine in engine_to_vehicle:
+                            vehicle_type_id = engine_to_vehicle[engine]
+                            # Join the remaining 28 tokens into a single string
+                            params_string = " ".join(tokens[4:32])
+                            conn.execute('''
+                                INSERT INTO vehicle_params (make, model, year, vehicle_type_id, param_string)
+                                VALUES (?, ?, ?, ?, ?)
+                            ''', (make, model, year, vehicle_type_id, params_string))
             
             conn.commit()
             conn.close()
@@ -388,6 +461,66 @@ def upload_vehicle_params():
             return jsonify({"error": f"Error processing file: {str(e)}"}), 500
     else:
         return jsonify({"error": "File type not allowed"}), 400
+    
+# New endpoint: Get Available Vehicles
+@app.route('/api/available-vehicles', methods=['GET'])
+def get_available_vehicles():
+    conn = get_db_connection()
+    try:
+        vehicles = conn.execute("SELECT * FROM available_vehicles").fetchall()
+        result = [{
+            "id": vehicle["id"],
+            "make": vehicle["make"],
+            "model": vehicle["model"],
+            "year": vehicle["year"]
+        } for vehicle in vehicles]
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": f"Error fetching available vehicles: {str(e)}"}), 500
+    finally:
+        conn.close()
+
+# New endpoint: Add a New Available Vehicle (Admin only)
+@app.route('/api/admin/available-vehicles', methods=['POST'])
+@admin_required
+def add_available_vehicle():
+    data = request.json
+    # Validate required fields
+    if not data or 'make' not in data or 'model' not in data or 'year' not in data:
+        return jsonify({"error": "Make, model, and year are required"}), 400
+
+    # Convert year to integer and perform simple validation
+    try:
+        year = int(data["year"])
+    except (ValueError, TypeError):
+        return jsonify({"error": "Year must be a valid number"}), 400
+
+    make = str(data["make"]).strip()
+    model = str(data["model"]).strip()
+
+    if not make or not model:
+        return jsonify({"error": "Make and model cannot be empty"}), 400
+
+    conn = get_db_connection()
+    try:
+        cursor = conn.execute(
+            "INSERT INTO available_vehicles (make, model, year) VALUES (?, ?, ?)",
+            (make, model, year)
+        )
+        conn.commit()
+        # Retrieve the newly inserted vehicle's ID.
+        new_vehicle_id = cursor.lastrowid
+        return jsonify({
+            "id": new_vehicle_id,
+            "make": make,
+            "model": model,
+            "year": year
+        }), 201
+    except Exception as e:
+        return jsonify({"error": f"Error adding vehicle: {str(e)}"}), 500
+    finally:
+        conn.close()
+
 
 @app.route('/api/admin/upload-calculation', methods=['POST'])
 # @admin_required
