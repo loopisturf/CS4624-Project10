@@ -29,33 +29,23 @@ const getProcessValueMap = () => ({
     const metrics = [];
     const processValueMap = getProcessValueMap();
   
+    // Don't proceed if neither an engineType is passed nor allVehicles is true
     if (!engineType && !allVehicles) return metrics;
   
     try {
-      let url = '/api/metrics';
-  
-      // If we're fetching metrics for a specific engineType, add it to the query string
-      if (!allVehicles && engineType) {
-        const engineTypeParam = encodeURIComponent(engineType);
-        url = `${url}?engineType=${engineTypeParam}`;
-      }
-  
+      const url = '/api/metrics'; // no query parameters anymore
   
       const res = await fetch(url);
       if (!res.ok) throw new Error(`API error: ${res.statusText}`);
-      
-      // Only parse the response body once here
+  
       const dbMetrics = await res.json();
   
       for (const dbMetric of dbMetrics) {
-        const { id, label, unit, color, valueKey, valid_engines } = dbMetric;
-        
-        // If 'allVehicles' is true, skip engine type filtering. Otherwise, check if the engineType is in valid_engines.
-        if (allVehicles || (valid_engines && valid_engines.includes(engineType))) {
-          const processValue = processValueMap[id] || processValueMap['unknown'];
+        const { id, label, unit, color, valueKey } = dbMetric;
   
-          metrics.push({ id, label, unit, color, valueKey, processValue });
-        }
+        const processValue = processValueMap[id] || processValueMap['unknown'];
+  
+        metrics.push({ id, label, unit, color, valueKey, processValue });
       }
   
       return metrics;
@@ -125,8 +115,18 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
                 const selectedUnit = config.unit;
                 const id = config.id;
                 const engineResult = estimationResults;
+
+                console.log("ESTIMATION")
+                console.log(estimationResults)
+
+                // if (engineResult[selectedUnit] !== undefined && engineResult[selectedUnit] !== 0) {
+                //     filtered[selectedUnit] = engineResult[selectedUnit];
+                // }
     
                 if (engineResult[selectedUnit] !== undefined) {
+                    if (engineResult[selectedUnit] === 0) {
+                        return filtered;  
+                    }
                     filtered[selectedUnit] = engineResult[selectedUnit];
                     const model_str = await getValueKeyById(id);
                     filtered.model = engineResult[model_str];
@@ -136,6 +136,11 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
             };
     
             const newData = await getFilteredEstimationDataSeperate(data, metricConfig);
+            // if (Object.keys(newData).length === 0) {
+            //     return <div className="no-data-message">No data available for visualization</div>;
+            // }
+            console.log("NEW DATA")
+            console.log(newData)
     
             let result = [];
     
@@ -152,7 +157,9 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
                                     count: 0
                                 });
                             }
-    
+                            if (Object.keys(newData).length === 0) {
+                                return <div className="no-data-message">No data available for visualization</div>;
+                            }
                             const value = metricConfig.processValue(newData.model[index], speed);
                             if (!isNaN(value) && isFinite(value)) {
                                 const bin = binnedData.get(binKey);

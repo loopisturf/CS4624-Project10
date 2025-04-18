@@ -1,8 +1,10 @@
 import numpy as np
 
+# the name of this function should be the same as the metric name
 def calculate_total_fuel(
     v,            # Array of vehicle speeds (m/s)
     power_kW,     # Array of power values (kW)
+    engine_type,  # This will the current engine the function is being called on
     parameters    # Dictionary of required parameters
 ):
     """
@@ -17,6 +19,7 @@ def calculate_total_fuel(
     Returns:
     dict: A dictionary containing calculated fuel/energy consumption and efficiency metrics.
     """
+    
     
     # Extract parameters (modify or add new parameters as needed)
     Alpha_0 = parameters.get('Alpha_0', 0)  # Base fuel/energy consumption rate

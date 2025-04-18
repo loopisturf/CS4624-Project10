@@ -7,7 +7,6 @@ export default function FileUpload() {
   const [errorMessage, setErrorMessage] = useState('');
   const [metricName, setMetricName] = useState('');
   const [metricUnits, setMetricUnits] = useState('');
-  const [metricVehicles, setMetricVehicles] = useState('');
   const [metricModel, setMetricModel] = useState('');
 
 
@@ -31,18 +30,8 @@ export default function FileUpload() {
         return;
     }
 
-    if (!metricVehicles) {
-        alert("Please enter valid vehicles!");
-        return;
-    }
-
-    // Capture the user input for vehicles (split by commas and clean up spaces)
-    const vehicles = metricVehicles.split(',').map(v => v.trim().toUpperCase());
-
-    // Send the vehicles as part of the FormData
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("vehicles", vehicles.join(','));
 
     try {
         const response = await fetch('/api/admin/upload-calculation', {
@@ -83,7 +72,7 @@ const handleDownloadTemplate = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!metricName || !metricUnits || !metricVehicles || !metricModel) {
+    if (!metricName || !metricUnits ||!metricModel) {
       setErrorMessage('Please fill in all the fields and upload the template file.');
       return;
     }
@@ -92,7 +81,6 @@ const handleDownloadTemplate = () => {
     const formData = new FormData();
     formData.append('metricName', metricName);
     formData.append('metricUnits', metricUnits);
-    formData.append('validVehicles', metricVehicles)
     formData.append('metricModel', metricModel)
   
     try {
@@ -147,19 +135,6 @@ const handleDownloadTemplate = () => {
                 className="text-input"
                 value={metricUnits}
                 onChange={(e) => setMetricUnits(e.target.value)}
-        />
-        </div>
-        <div className="input-wrapper">
-            <label htmlFor="metric-vehicles" className="upload-label">
-                Enter the valid vehicles (BEV, HEV, HFCV, and/or ICEV) for the new metric
-            </label>
-            <input
-                type="text"
-                id="metric-vehicle"
-                className="text-input"
-                placeholder="e.g. BEV, HEV"
-                value={metricVehicles}
-                onChange={(e) => setMetricVehicles(e.target.value)}
         />
         </div>
         <div className="input-wrapper">

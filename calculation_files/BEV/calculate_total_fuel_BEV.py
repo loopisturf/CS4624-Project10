@@ -3,7 +3,7 @@ import math
 import sys
 from config import *
 
-def calculate_total_fuel_BEV(v, power_kW, parameters):
+def calculate_total_fuel_BEV(v, power_kW, engine_type, parameters):
     """
     Calculates total energy consumption for a Battery Electric Vehicle (BEV).
 

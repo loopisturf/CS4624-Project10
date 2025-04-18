@@ -59,7 +59,7 @@ def getEnergy(selection, speed_data, param_list):
             'Alpha_1': Alpha_1,
             'Alpha_2': Alpha_2
         }
-        args = [v, Power_kW, parameters]
+        args = [v, Power_kW, "ICEV", parameters]
 
     elif selection == 2:  # BEV
         subdirectory = "BEV"
@@ -73,7 +73,7 @@ def getEnergy(selection, speed_data, param_list):
             'accel': accel,
             'P_wheels': P_wheels
         }
-        args = [v, Power_kW, parameters]
+        args = [v, Power_kW, "BEV", parameters]
 
     elif selection == 3:  # HEV
         subdirectory = "HEV"
@@ -83,14 +83,14 @@ def getEnergy(selection, speed_data, param_list):
             'Alpha_2': Alpha_2,
             'Alpha_3': Alpha_3
         }
-        args = [v, Power_kW, parameters]
+        args = [v, Power_kW, "HEV", parameters]
 
     elif selection == 4:  # HFCV
         subdirectory = "HFCV"
         parameters = {
             'Max_Power': Max_Power
         }
-        args = [v, Power_kW, parameters]
+        args = [v, Power_kW, "HFCV", parameters]
 
     else:
         raise ValueError('Invalid input. Please enter a number between 1 and 4.')

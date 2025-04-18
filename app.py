@@ -398,38 +398,15 @@ def upload_calculation():
 
     file = request.files['file']
 
-    # Ensure the vehicles are provided
-    if 'vehicles' not in request.form:
-        return jsonify({"error": "No vehicles specified"}), 400
-
-    vehicles = request.form['vehicles'].split(',')
-    vehicles = [vehicle.strip().upper() for vehicle in vehicles]  # Clean up vehicle names
-
-    # Ensure the calculations directory exists
+    # Save to the "all" directory
     base_folder = app.config['CALCULATION_UPLOAD_FOLDER']
-    os.makedirs(base_folder, exist_ok=True)
+    all_vehicle_folder = os.path.join(base_folder, "all")
+    os.makedirs(all_vehicle_folder, exist_ok=True)
 
-    # Check if all vehicle types are selected (BEV, HFCV, HEV, ICEV)
-    if len(set(vehicles)) == 4:
-        # Upload to the "all" directory if all vehicle types are selected
-        all_vehicle_folder = os.path.join(base_folder, "all")
-        os.makedirs(all_vehicle_folder, exist_ok=True)
-        
-        # Save the file in the "all" directory
-        file_path = os.path.join(all_vehicle_folder, file.filename)
-        file.save(file_path)
-    else:
-        # Process each vehicle type individually
-        for vehicle in vehicles:
-            # Ensure the subdirectory exists for each vehicle
-            vehicle_folder = os.path.join(base_folder, vehicle)
-            os.makedirs(vehicle_folder, exist_ok=True)
+    file_path = os.path.join(all_vehicle_folder, file.filename)
+    file.save(file_path)
 
-            # Save the file in the corresponding subdirectory
-            file_path = os.path.join(vehicle_folder, file.filename)
-            file.save(file_path)
-
-    return jsonify({"message": "File uploaded successfully to selected vehicles."}), 200
+    return jsonify({"message": "File uploaded successfully to 'all' directory."}), 200
 
     
 @app.route('/api/estimate', methods=['POST'])
@@ -755,8 +732,8 @@ def update_collection(collection_id):
 @app.route('/api/get_metric', methods=['GET'])
 def get_metric():
     metric_id = request.args.get('id')
-    print("metric_id")
-    print(metric_id)
+    # print("metric_id")
+    # print(metric_id)
     if not metric_id:
         return jsonify({'error': 'Missing id parameter'}), 400
 
@@ -766,16 +743,16 @@ def get_metric():
 
         cursor.execute("SELECT * FROM metrics WHERE id = ?", (metric_id,))
         row = cursor.fetchone()
-        print("rows")
-        print(row)
+        # print("rows")
+        # print(row)
         conn.close()
 
         if row:
             result = {
                 'valueKey': row[4]
             }
-            print("model backend")
-            print(result)
+            # print("model backend")
+            # print(result)
             return jsonify(result)
         else:
             return jsonify({'error': 'Metric not found'}), 404
@@ -784,20 +761,13 @@ def get_metric():
 
 @app.route('/api/metrics', methods=['GET'])
 def get_metrics():
-    engine_type = request.args.get('engineType')
     try:
         conn = get_db_connection()
-        if engine_type:
-            # Fixed query with table alias to avoid column name ambiguity
-            metrics = conn.execute(
-                'SELECT DISTINCT m.id, m.label, m.unit, m.color, m.valueKey, m.valid_engines '
-                'FROM metrics AS m, json_each(m.valid_engines) '
-                'WHERE json_each.value = ?',
-                (engine_type,)
-            ).fetchall()
-        else:
-            # Return all metrics if no engine_type is provided
-            metrics = conn.execute('SELECT id, label, unit, color, valueKey, valid_engines FROM metrics').fetchall()
+
+        # Simply fetch all metrics
+        metrics = conn.execute(
+            'SELECT id, label, unit, color, valueKey FROM metrics'
+        ).fetchall()
 
         if not metrics:
             return jsonify([]), 200
@@ -816,17 +786,8 @@ def add_metric():
     """Add a new metric."""
     metric_name = request.form.get('metricName')
     metric_units = request.form.get('metricUnits')
-    valid_vehicles_old = request.form.get('validVehicles')
-    valid_vehicles_list = [vehicle.strip() for vehicle in valid_vehicles_old.split(',')]
-    valid_vehicles = '['
-    for index, vehicle in enumerate(valid_vehicles_list):
-        if index == len(valid_vehicles_list) - 1:
-            valid_vehicles = valid_vehicles + '"' + vehicle + '"'
-        else:
-            valid_vehicles = valid_vehicles + '"' + vehicle + '", '
-    valid_vehicles = valid_vehicles + "]"
     metric_key = request.form.get('metricModel')
-    print(valid_vehicles)
+    # print(valid_vehicles)
     metric_id = metric_name.lower().replace(" ", "_")
     metric_color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
     
@@ -834,8 +795,6 @@ def add_metric():
         return jsonify({"error": "Metric name is required"}), 400
     if not metric_units:
         return jsonify({"error": "Metric units are required"}), 400
-    if not valid_vehicles:
-        return jsonify({"error": "Valid vehicles are required"}), 400
     
     try:
         conn = get_db_connection()
@@ -851,9 +810,9 @@ def add_metric():
         
         # Insert new metric data into the database
         conn.execute(''' 
-            INSERT INTO metrics (id, label, unit, color, valueKey, valid_engines)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (metric_id, metric_name, metric_units, metric_color, metric_key, valid_vehicles)) 
+            INSERT INTO metrics (id, label, unit, color, valueKey)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (metric_id, metric_name, metric_units, metric_color, metric_key)) 
         
         conn.commit()
         
@@ -949,8 +908,8 @@ def download_collection(collection_id):
                 
                 try:
                     results = getEnergy(vehicle_id, speed_data, param_list)
-                    print("result get energy")
-                    print(results)
+                    # print("result get energy")
+                    # print(results)
                     # Create vehicle-specific folder
                     folder = f"results/{vehicle_type}"
                     

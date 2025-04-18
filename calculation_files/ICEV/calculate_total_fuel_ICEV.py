@@ -2,7 +2,7 @@ import numpy as np
 import math
 import sys
 
-def calculate_total_fuel_ICEV(v, Power_kW, parameters):
+def calculate_total_fuel_ICEV(v, Power_kW, engineType, parameters):
     """
     Calculates total fuel and energy consumption for an Internal Combustion Engine Vehicle (ICEV).
 

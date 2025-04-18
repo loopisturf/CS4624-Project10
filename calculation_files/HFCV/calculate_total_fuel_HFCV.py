@@ -2,7 +2,7 @@ import numpy as np
 import math
 import sys
 
-def calculate_total_fuel_HFCV(v, Power_kW, parameters):
+def calculate_total_fuel_HFCV(v, Power_kW, engine_type, parameters):
     # print("ENGINE TYPE")
     # print(engine_type)
     # if engine_type != "HFCV":
