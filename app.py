@@ -19,13 +19,30 @@ import csv
 from flask import Flask, request, jsonify, send_file  # Add send_file to imports
 import random
 import traceback
+from werkzeug.exceptions import HTTPException
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__, static_folder='static')
+app.config['PROPAGATE_EXCEPTIONS'] = False
 CORS(app)
 
+# --------------------------------------------------
+@app.errorhandler(Exception)
+def handle_all_errors(e):
+    # if it’s an HTTPException, pull its code, otherwise 500
+    code = getattr(e, 'code', 500)
+    return jsonify({
+        "error": str(e)
+    }), code
+    
+def handle_http_exception(e):
+    # e.code is the HTTP status (e.g. 405), e.description is the plain‑text message
+    return jsonify({
+        "error": e.description
+    }), e.code
+# --------------------------------------------------
 
 # Configure upload folder and allowed file extensions
 VEHICLE_UPLOAD_FOLDER = 'uploads'
@@ -303,25 +320,39 @@ def delete_vehicle_type(type_id):
 def get_vehicle_params():
     conn = get_db_connection()
     cursor = conn.cursor()
-    
+
     query = """
-        SELECT vehicle_params.id, vehicle_types.type_name, vehicle_params.param_string
-        FROM vehicle_params
-        JOIN vehicle_types ON vehicle_params.vehicle_type_id = vehicle_types.id;
+       SELECT 
+         vp.id,
+         vp.vehicle_type_id,
+         vt.type_name,
+         vp.make,
+         vp.model,
+         vp.year,
+         vp.param_string
+       FROM vehicle_params AS vp
+       JOIN vehicle_types   AS vt
+         ON vp.vehicle_type_id = vt.id
+       ORDER BY vp.id;
     """
     cursor.execute(query)
-    vehicle_params = cursor.fetchall()
+    rows = cursor.fetchall()
     conn.close()
-    
+
     result = [
         {
-            "id": param[0],
-            "type_name": param[1],
-            "param_string": param[2]
+            "id":               row[0],
+            "vehicle_type_id":  row[1],
+            "type_name":        row[2],
+            "make":             row[3],
+            "model":            row[4],
+            "year":             row[5],
+            "param_string":     row[6],
         }
-        for param in vehicle_params
+        for row in rows
     ]
     return jsonify(result)
+
 
 @app.route('/api/admin/clear-vehicle-params', methods=['POST'])
 @admin_required
@@ -335,61 +366,103 @@ def clear_vehicle_params():
     except Exception as e:
         return jsonify({"error": f"Error clearing parameters: {str(e)}"}), 500
 
-@app.route('/api/admin/upload-vehicle-params', methods=['POST'])
+@app.route('/api/admin/vehicle-params', methods=['POST'])
 @admin_required
-def upload_vehicle_params():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
-    
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-        
-    if file and allowed_file(file.filename):
-        try:
-            conn = get_db_connection()
-            content = file.read().decode('utf-8')
-            
-            # Engine type to vehicle type mapping
-            engine_to_vehicle = {
-                1: 1,  # ICEV (Gas/Diesel)
-                3: 2,  # BEV
-                6: 3,  # HEV
-                7: 4   # HFCV
-            }
-            
-            # Start transaction
-            conn.execute('BEGIN TRANSACTION')
-            
-            # Clear existing parameters and reset sequence
-            conn.execute('DELETE FROM vehicle_params')
-            conn.execute('DELETE FROM sqlite_sequence WHERE name = "vehicle_params"')
-            
-            # Insert new parameters
-            for line in content.splitlines():
-                if line.strip() and not line.startswith('#'):
-                    params = line.strip().split()
-                    if len(params) == 30:  # Verify we have all 30 parameters
-                        engine_type = int(params[1])
-                        if engine_type in engine_to_vehicle:
-                            vehicle_type_id = engine_to_vehicle[engine_type]
-                            param_string = ' '.join(params)
-                            conn.execute(
-                                'INSERT INTO vehicle_params (vehicle_type_id, param_string) VALUES (?, ?)',
-                                (vehicle_type_id, param_string)
-                            )
-            
-            conn.commit()
-            conn.close()
-            return jsonify({"message": "Vehicle parameters uploaded successfully"}), 201
-            
-        except Exception as e:
-            if conn:
-                conn.rollback()
-                conn.close()
-            return jsonify({"error": f"Error processing file: {str(e)}"}), 500
-    else:
-        return jsonify({"error": "File type not allowed"}), 400
+def create_vehicle_param():
+    data = request.get_json() or {}
+    # required fields
+    for f in ('vehicle_type_id','make','model','year','param_string'):
+        if f not in data:
+            return jsonify({'error': f'Missing field {f}'}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO vehicle_params
+              (vehicle_type_id, make, model, year, param_string)
+            VALUES (?,?,?,?,?)
+        ''', (
+            int(data['vehicle_type_id']),
+            data['make'],
+            data['model'],
+            int(data['year']),
+            data['param_string']
+        ))
+        conn.commit()
+        new_id = cursor.lastrowid
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        conn.close()
+
+    return jsonify({'message':'Vehicle added','id':new_id}), 201
+
+
+@app.route('/api/admin/vehicle-params/<int:param_id>', methods=['PUT'])
+@admin_required
+def update_vehicle_param(param_id):
+    data = request.get_json() or {}
+    # ensure all required fields are present
+    for f in ('vehicle_type_id','make','model','year','param_string'):
+        if f not in data:
+            return jsonify({'error': f'Missing field {f}'}), 400
+
+    try:
+        conn = get_db_connection()
+        # make sure this record exists
+        row = conn.execute(
+            'SELECT 1 FROM vehicle_params WHERE id = ?', (param_id,)
+        ).fetchone()
+        if not row:
+            return jsonify({'error': 'Vehicle parameter not found'}), 404
+
+        # perform the update
+        conn.execute('''
+            UPDATE vehicle_params
+               SET vehicle_type_id = ?,
+                   make             = ?,
+                   model            = ?,
+                   year             = ?,
+                   param_string     = ?
+             WHERE id = ?
+        ''', (
+            int(data['vehicle_type_id']),
+            data['make'],
+            data['model'],
+            int(data['year']),
+            data['param_string'],
+            param_id
+        ))
+        conn.commit()
+        return jsonify({'message':'Vehicle updated successfully'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/vehicle-params/<int:param_id>', methods=['DELETE'])
+@admin_required
+def delete_vehicle_param(param_id):
+    conn = get_db_connection()
+    try:
+        # make sure it exists
+        row = conn.execute('SELECT * FROM vehicle_params WHERE id = ?', (param_id,)).fetchone()
+        if not row:
+            return jsonify({"error": "Vehicle parameter not found"}), 404
+
+        conn.execute('DELETE FROM vehicle_params WHERE id = ?', (param_id,))
+        conn.commit()
+        return jsonify({"message": "Vehicle parameter deleted"}), 200
+
+    except sqlite3.Error as e:
+        return jsonify({"error": f"Database error: {e}"}), 500
+
+    finally:
+        conn.close()
 
 @app.route('/api/admin/upload-calculation', methods=['POST'])
 def upload_calculation():
@@ -413,96 +486,97 @@ def upload_calculation():
 def estimate_energy():
     if 'file' not in request.files:
         return jsonify({"error": "No file part"}), 400
-        
     file = request.files['file']
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
-    
+
     username = request.form.get('username')
-    vehicle_type_id = request.form.get('vehicle_type_id')
+    vehicle_param_id = request.form.get('vehicle_param_id')
     collection_id = request.form.get('collection_id')
-    
-    if not all([username, vehicle_type_id, collection_id]):
-        return jsonify({"error": "Username, vehicle type ID, and collection ID are required"}), 400
-    
+
+    if not all([username, vehicle_param_id, collection_id]):
+        return jsonify({"error": "Username, vehicle_param_id, and collection_id are required"}), 400
+
     try:
-        vehicle_type_id = int(vehicle_type_id)
+        param_id = int(vehicle_param_id)
     except ValueError:
-        return jsonify({"error": "Invalid vehicle type ID"}), 400
-    
-    if file and allowed_file(file.filename):
-        conn = None
-        try:
-            # Save file temporarily
-            filename = secure_filename(file.filename)
-            file_path = os.path.join(app.config['VEHICLE_UPLOAD_FOLDER'], filename)
-            file.save(file_path)
-            
-            # Parse speed profile
-            try:
-                speed_data = parse_speed_profile(file_path)
-                
-                # Add validation for speed data
-                if not speed_data or len(speed_data) < 2:
-                    raise ValueError("Speed profile must contain at least 2 data points")
-            finally:
-                # Clean up the temporary file
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-            
-            # Fetch vehicle parameters and type
-            conn = get_db_connection()
-            params = conn.execute('''
-                SELECT vp.param_string, vt.type_name 
-                FROM vehicle_params vp
-                JOIN vehicle_types vt ON vp.vehicle_type_id = vt.id
-                WHERE vp.vehicle_type_id = ?
-            ''', (vehicle_type_id,)).fetchone()
-            
-            if not params:
-                return jsonify({"error": "Vehicle parameters not found"}), 400
-                
-            param_list = params['param_string'].split()
-            vehicle_type = params['type_name']
-            
-            # Calculate energy consumption
-            try:
-                result = getEnergy(vehicle_type_id, speed_data, param_list)
-            except Exception as calc_error:
-                return jsonify({"error": f"Energy calculation failed: {str(calc_error)}"}), 400
-            
-            # Store results in collections table
-            conn.execute('''
-                UPDATE collections
-                SET results = json_set(
-                    COALESCE(results, '{}'),
-                    '$.' || ?,
-                    json(?)
-                )
-                WHERE username = ? AND id = ?
-            ''', (
-                str(vehicle_type_id),
-                json.dumps({
-                    'vehicle_type': vehicle_type,
-                    'result_data': result,
-                    'timestamp': datetime.now().isoformat()
-                }),
-                username,
-                collection_id
-            ))
-            conn.commit()
-            
-            return jsonify(result)
-            
-        except ValueError as ve:
-            return jsonify({"error": str(ve)}), 400
-        except Exception as e:
-            return jsonify({"error": f"Error processing request: {str(e)}"}), 500
-        finally:
-            if conn:
-                conn.close()
-    else:
+        return jsonify({"error": "Invalid vehicle_param_id"}), 400
+
+    if not allowed_file(file.filename):
         return jsonify({"error": "File type not allowed"}), 400
+
+    conn = None
+    try:
+        # 1) save & parse the speed profile
+        filename = secure_filename(file.filename)
+        tmp = os.path.join(app.config['VEHICLE_UPLOAD_FOLDER'], filename)
+        file.save(tmp)
+        try:
+            speed_data = parse_speed_profile(tmp)
+            if len(speed_data) < 2:
+                raise ValueError("Speed profile must contain at least 2 data points")
+        finally:
+            os.remove(tmp)
+
+        # 2) fetch the param_string *and* the vehicle_type_id (1–4)
+        conn = get_db_connection()
+        row = conn.execute('''
+            SELECT vp.param_string,
+                   vt.id AS vehicle_type_id,
+                   vt.type_name
+            FROM vehicle_params AS vp
+            JOIN vehicle_types  AS vt ON vp.vehicle_type_id = vt.id
+            WHERE vp.id = ?
+        ''', (param_id,)).fetchone()
+
+        if not row:
+            return jsonify({"error": "Vehicle parameters not found"}), 400
+
+        param_list      = row['param_string'].split()
+        vehicle_type_id = row['vehicle_type_id']
+        vehicle_name    = row['type_name']
+
+        # 3) call getEnergy with the *type* id, not the param PK
+        try:
+            result = getEnergy(vehicle_type_id, speed_data, param_list)
+        except Exception as calc_error:
+            return jsonify({"error": f"Energy calculation failed: {calc_error}"}), 400
+
+        # 4) stash the result under the *param_id* key in collections.results
+        conn.execute('''
+            UPDATE collections
+            SET results = json_set(
+                COALESCE(results, '{}'),
+                '$."' || ? || '"',
+                json(?)
+            )
+            WHERE username = ? AND id = ?
+        ''', (
+            str(param_id),
+            json.dumps({
+                'vehicle_type':  vehicle_name,
+                'result_data':   result,
+                'make':          None,  # you can fill make/model/year here if you want
+                'model':         None,
+                'year':          None,
+                'timestamp':     datetime.now().isoformat()
+            }),
+            username,
+            collection_id
+        ))
+        conn.commit()
+
+        return jsonify(result)
+
+    except ValueError as ve:
+        return jsonify({"error": str(ve)}), 400
+
+    except Exception as e:
+        return jsonify({"error": f"Error processing request: {e}"}), 500
+
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/api/collections', methods=['POST'])
 def create_collection():
@@ -781,8 +855,6 @@ def get_metrics():
     finally:
         conn.close()
 
-
-
 @app.route('/api/metrics', methods=['POST'])
 def add_metric():
     """Add a new metric."""
@@ -1045,4 +1117,4 @@ Analysis completed: {datetime.now().isoformat()}
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
