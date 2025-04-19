@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
     is_admin BOOLEAN NOT NULL DEFAULT 0
 );
 
+-- VEHICLE TYPES TABLE
 CREATE TABLE IF NOT EXISTS vehicle_types (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     type_name TEXT UNIQUE NOT NULL,
@@ -13,12 +14,17 @@ CREATE TABLE IF NOT EXISTS vehicle_types (
     engine_id INTEGER UNIQUE NOT NULL
 );
 
+-- VEHICLE PARAMETERS TABLE (now with make, model, year)
 CREATE TABLE IF NOT EXISTS vehicle_params (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     vehicle_type_id INTEGER NOT NULL,
+    make TEXT,
+    model TEXT,
+    year INTEGER,
     param_string TEXT NOT NULL,
     FOREIGN KEY (vehicle_type_id) REFERENCES vehicle_types (id)
 );
+
 
 CREATE TABLE IF NOT EXISTS collections (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
