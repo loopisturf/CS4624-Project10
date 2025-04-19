@@ -157,14 +157,15 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
                                     count: 0
                                 });
                             }
-                            if (Object.keys(newData).length === 0) {
-                                return <div className="no-data-message">No data available for visualization</div>;
-                            }
-                            const value = metricConfig.processValue(newData.model[index], speed);
-                            if (!isNaN(value) && isFinite(value)) {
-                                const bin = binnedData.get(binKey);
-                                bin.values.push(value);
-                                bin.count++;
+
+                            // Check if newData is empty and set the flag accordingly
+                            if (Object.keys(newData).length != 0) {
+                                const value = metricConfig.processValue(newData.model[index], speed);
+                                if (!isNaN(value) && isFinite(value)) {
+                                    const bin = binnedData.get(binKey);
+                                    bin.values.push(value);
+                                    bin.count++;
+                                }
                             }
                         }
                     });
@@ -253,114 +254,124 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
     // console.log(selectedMetric)
     // console.log(processChartData)
     // console.log(processChartData.length)
-    if (!selectedMetric || processChartData.length === 0) {
+    if (!selectedMetric) {
         return <div className="no-data-message">No data available for visualization</div>;
     }
 
     const selectedMetricConfig = availableMetrics.find(m => m.id === selectedMetric);
-
     return (
         <div className="chart-container">
-            {/* TODO Change the original Chart Controls*/}
-            {/* TODO Ask if we still even need this? */}
-            <div className="chart-controls">
-                <div className="control-group">
-                    <label>Metric:</label>
-                    <select 
-                        value={selectedMetric} 
-                        onChange={(e) => setSelectedMetric(e.target.value)}
-                        className="metric-select"
-                    >
-                        {availableMetrics.map(metric => (
-                            <option key={metric.id} value={metric.id}>
-                                {metric.label}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="control-group">
-                    <label>View Type:</label>
-                    <select 
-                        value={visualizationType} 
-                        onChange={(e) => setVisualizationType(e.target.value)}
-                        className="visualization-select"
-                    >
-                        <option value="binned">Speed Bins</option>
-                        <option value="moving">Moving Average</option>
-                        <option value="sampled">Sampled Data</option>
-                    </select>
-                </div>
-
-                {visualizationType === 'binned' && (
-                    <div className="control-group">
-                        <label>Bin Size (km/h):</label>
-                        <input
-                            type="number"
-                            min="1"
-                            max="20"
-                            value={binSize}
-                            onChange={(e) => setBinSize(Number(e.target.value))}
-                            className="control-input"
-                        />
-                    </div>
-                )}
-
-                {visualizationType === 'moving' && (
-                    <div className="control-group">
-                        <label>Window Size:</label>
-                        <input
-                            type="number"
-                            min="10"
-                            max="200"
-                            step="10"
-                            value={windowSize}
-                            onChange={(e) => setWindowSize(Number(e.target.value))}
-                            className="control-input"
-                        />
-                    </div>
-                )}
-
-                {visualizationType === 'sampled' && (
-                    <div className="control-group">
-                        <label>Sample Rate:</label>
-                        <input
-                            type="number"
-                            min="1"
-                            max="100"
-                            value={samplingRate}
-                            onChange={(e) => setSamplingRate(Number(e.target.value))}
-                            className="control-input"
-                        />
-                    </div>
-                )}
+          {/* Chart Controls: always visible */}
+          <div className="chart-controls">
+            <div className="control-group">
+              <label>Metric:</label>
+              <select
+                value={selectedMetric}
+                onChange={(e) => setSelectedMetric(e.target.value)}
+                className="metric-select"
+              >
+                {availableMetrics.map(metric => (
+                  <option key={metric.id} value={metric.id}>
+                    {metric.label}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="chart-wrapper">
-                {/* Plotly plot */}
-                <Plot
-                    data={[{
-                        x: processChartData.map(point => point.speed),
-                        y: processChartData.map(point => point.value),
-                        type: 'scatter',
-                        mode: 'lines', // Just lines, markers produce some clutter
-                        line: { width: 2 },
-                        marker: { color: selectedMetricConfig.color },
-                    }]}
-                    layout={{ 
-                        margin: { t: 30, r: 30, l: 60, b: 35 },
-                        title: { text: `${selectedMetricConfig.label} vs Speed`, x: 0.5, xanchor: 'center' },
-                        yaxis: { title: { text: `${selectedMetricConfig.label} (${selectedMetricConfig.unit})` } },
-                        xaxis: { title: { text: 'Speed (km/h)' } },
-                        autosize: true,
-                    }}
-                    config={{
-                        displayModeBar: false,
-                        responsive: true,
-                    }}
-                    useResizeHandler
-                    style={{ width: '100%', height: '100%' }}
+      
+            <div className="control-group">
+              <label>View Type:</label>
+              <select
+                value={visualizationType}
+                onChange={(e) => setVisualizationType(e.target.value)}
+                className="visualization-select"
+              >
+                <option value="binned">Speed Bins</option>
+                <option value="moving">Moving Average</option>
+                <option value="sampled">Sampled Data</option>
+              </select>
+            </div>
+      
+            {visualizationType === 'binned' && (
+              <div className="control-group">
+                <label>Bin Size (km/h):</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={binSize}
+                  onChange={(e) => setBinSize(Number(e.target.value))}
+                  className="control-input"
                 />
-            </div>
+              </div>
+            )}
+      
+            {visualizationType === 'moving' && (
+              <div className="control-group">
+                <label>Window Size:</label>
+                <input
+                  type="number"
+                  min="10"
+                  max="200"
+                  step="10"
+                  value={windowSize}
+                  onChange={(e) => setWindowSize(Number(e.target.value))}
+                  className="control-input"
+                />
+              </div>
+            )}
+      
+            {visualizationType === 'sampled' && (
+              <div className="control-group">
+                <label>Sample Rate:</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={samplingRate}
+                  onChange={(e) => setSamplingRate(Number(e.target.value))}
+                  className="control-input"
+                />
+              </div>
+            )}
+          </div>
+      
+          {/* Chart or No Data Message */}
+          <div className="chart-wrapper">
+            {Array.isArray(processChartData) && processChartData.length === 0 ? (
+              <div className="no-data-message">No data available for visualization</div>
+            ) : (
+              <Plot
+                data={[
+                  {
+                    x: processChartData?.map(point => point.speed) || [],
+                    y: processChartData?.map(point => point.value) || [],
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { width: 2 },
+                    marker: { color: selectedMetricConfig?.color || 'black' },
+                  }
+                ]}
+                layout={{
+                  margin: { t: 30, r: 30, l: 60, b: 35 },
+                  title: {
+                    text: `${selectedMetricConfig?.label || 'Metric'} vs Speed`,
+                    x: 0.5,
+                    xanchor: 'center',
+                  },
+                  yaxis: {
+                    title: {
+                      text: `${selectedMetricConfig?.label || 'Metric'} (${selectedMetricConfig?.unit || ''})`
+                    }
+                  },
+                  xaxis: { title: { text: 'Speed (km/h)' } },
+                  autosize: true,
+                }}
+                config={{ displayModeBar: false, responsive: true }}
+                useResizeHandler
+                style={{ width: '100%', height: '100%' }}
+              />
+            )}
+          </div>
         </div>
     );
 };

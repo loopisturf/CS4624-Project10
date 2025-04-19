@@ -71,32 +71,45 @@ const handleDownloadTemplate = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!metricName || !metricUnits ||!metricModel) {
+  
+    if (!metricName || !metricUnits || !metricModel) {
       setErrorMessage('Please fill in all the fields and upload the template file.');
       return;
     }
   
-    // Create the data to send to the server
-    const formData = new FormData();
-    formData.append('metricName', metricName);
-    formData.append('metricUnits', metricUnits);
-    formData.append('metricModel', metricModel)
-  
     try {
-      // Assuming you have an API endpoint for submitting the metric data
-      const response = await fetch('/api/metrics', {
+      const response = await fetch('/api/metrics');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const metrics = await response.json();
+      const exists = metrics.some(metric => metric.valueKey === metricModel);
+  
+      if (exists) {
+        console.error('Model name already exists, choose another one');
+        alert('Model name already exists, choose another one');
+        return; // Stop submission
+      }
+  
+      // Create the data to send to the server
+      const formData = new FormData();
+      formData.append('metricName', metricName);
+      formData.append('metricUnits', metricUnits);
+      formData.append('metricModel', metricModel);
+  
+      const submitResponse = await fetch('/api/metrics', {
         method: 'POST',
         body: formData,
       });
   
-      if (!response.ok) {
+      if (!submitResponse.ok) {
         throw new Error('Failed to submit metric');
       }
   
-      // Handle success response
       alert('Metric submitted successfully!');
     } catch (error) {
+      console.error('Error:', error);
       setErrorMessage(error.message || 'Something went wrong!');
     }
   };
@@ -204,5 +217,3 @@ const handleDownloadTemplate = () => {
         </>
   );
 }
-
-

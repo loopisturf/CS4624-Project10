@@ -543,6 +543,8 @@ def estimate_energy():
         # 3) call getEnergy with the *type* id, not the param PK
         try:
             result = getEnergy(vehicle_type_id, speed_data, param_list)
+            print("result")
+            print(result)
         except Exception as calc_error:
             return jsonify({"error": f"Energy calculation failed: {calc_error}"}), 400
 

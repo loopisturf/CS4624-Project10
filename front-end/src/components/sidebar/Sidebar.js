@@ -139,6 +139,22 @@ const Sidebar = ({
           <label className="engine-label"><strong>Select All Vehicles</strong></label>
         </div>
 
+        {/* View mode toggle buttons */}
+        <div className="view-toggle sidebar-view-toggle">
+          <button 
+            className={`toggle-button ${viewMode === 'metrics' ? 'active' : ''}`}
+            onClick={() => setViewMode('metrics')}
+          >
+            Key Metrics
+          </button>
+          <button 
+            className={`toggle-button ${viewMode === 'charts' ? 'active' : ''}`}
+            onClick={() => setViewMode('charts')}
+          >
+            Efficiency Analysis
+          </button>
+        </div>
+        
         {/* Grouped list */}
         <div className="engine-list">
           {vehicleTypes.map(type => {
