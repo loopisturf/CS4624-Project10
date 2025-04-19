@@ -55,7 +55,8 @@ INSERT OR IGNORE INTO metrics (id, label, unit, color, valueKey) VALUES
   ('fuel_rate',         'Fuel Rate',          'L/s',    '#2a9d30',       'og_model'),
   ('fuel_economy',      'Fuel Economy',       'MPG',    '#7c51d9',       'og_model'),
   ('power',             'Power Output',       'kW',     '#2a9d8f',       'og_model'),
-  ('energy_efficiency', 'Energy Efficiency',  'mi/kWh', '#ff2828',       'og_model');
+  ('energy_efficiency', 'Energy Efficiency',  'mi/kWh', '#ff2828',       'og_model'),
+  ('particle_matter', 'Particle Matter', 'micrometers', '#2a9d30', 'pm_model');
 
 -- INITIAL VEHICLE TYPES
 INSERT OR IGNORE INTO vehicle_types (type_name, full_name, engine_id) VALUES 

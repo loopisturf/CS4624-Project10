@@ -289,7 +289,7 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
               </select>
             </div>
       
-            <div className="control-group">
+            {/* <div className="control-group">
               <label>View Type:</label>
               <select
                 value={visualizationType}
@@ -300,9 +300,9 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
                 <option value="moving">Moving Average</option>
                 <option value="sampled">Sampled Data</option>
               </select>
-            </div>
+            </div> */}
       
-            {visualizationType === 'binned' && (
+            {/* {visualizationType === 'binned' && (
               <div className="control-group">
                 <label>Bin Size (km/h):</label>
                 <input
@@ -314,7 +314,7 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
                   className="control-input"
                 />
               </div>
-            )}
+            )} */}
       
             {visualizationType === 'moving' && (
               <div className="control-group">
@@ -596,8 +596,8 @@ const CombinedEnergyChart = ({ estimationResults, collection }) => {
             ))}
           </select>
         </div>
-        <div className="control-group">
-          <label>View Type:</label>
+        {/* <div className="control-group"> */}
+          {/* <label>View Type:</label>
           <select value={visualizationType} onChange={(e) => setVisualizationType(e.target.value)} className="visualization-select">
             <option value="binned">Speed Bins</option>
             <option value="moving">Moving Average</option>
@@ -609,7 +609,7 @@ const CombinedEnergyChart = ({ estimationResults, collection }) => {
             <label>Bin Size (km/h):</label>
             <input type="number" min="1" max="20" value={binSize} onChange={(e) => setBinSize(Number(e.target.value))} className="control-input" />
           </div>
-        )}
+        )} */}
         {visualizationType === 'moving' && (
           <div className="control-group">
             <label>Window Size:</label>
@@ -801,7 +801,7 @@ function Body({ isSidebarOpen }) {
                   <MetricCard
                     key={id}
                     label={result.label}
-                    value={result.total_energy_kWh || 0}
+                    value={result.kW || 0}
                     unit="kWh"
                   />
                 ))}
