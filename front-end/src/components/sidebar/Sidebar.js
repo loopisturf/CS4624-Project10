@@ -14,6 +14,7 @@ const Sidebar = ({
   const [collectionData, setCollectionData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [estimationResults, setEstimationResults] = useState({}); // Analysis results
 
   // Fetch types, params, and optionally the current collection
   useEffect(() => {
@@ -113,6 +114,8 @@ const Sidebar = ({
       }
     }
     setLoading(false);
+    // console.log("ESIMATION")
+    // console.log(estimationResults)
   };
 
   // Compute global select-all state

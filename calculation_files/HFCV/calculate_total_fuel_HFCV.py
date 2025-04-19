@@ -68,7 +68,7 @@ def calculate_total_fuel_HFCV(v, Power_kW, engine_type, parameters):
     miles_per_gallon = distance_miles / total_fuel_gallon if total_fuel_gallon > 0 else 0
 
     return {
-        'model': HFCV_MODEL.tolist(),
+        'og_model': HFCV_MODEL.tolist(),
         'kW': total_fuel_kWh,
         'L/s': total_fuel_L,
         'mi/kWh': total_fuel_mileperkWh,

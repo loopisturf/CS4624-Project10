@@ -52,10 +52,10 @@ CREATE TABLE IF NOT EXISTS metrics (
 );
 
 INSERT OR IGNORE INTO metrics (id, label, unit, color, valueKey) VALUES 
-  ('fuel_rate',         'Fuel Rate',          'L/s',    '#2a9d30',       'model'),
-  ('fuel_economy',      'Fuel Economy',       'MPG',    '#7c51d9',       'model'),
-  ('power',             'Power Output',       'kW',     '#2a9d8f',       'model'),
-  ('energy_efficiency', 'Energy Efficiency',  'mi/kWh', '#ff2828',       'model');
+  ('fuel_rate',         'Fuel Rate',          'L/s',    '#2a9d30',       'og_model'),
+  ('fuel_economy',      'Fuel Economy',       'MPG',    '#7c51d9',       'og_model'),
+  ('power',             'Power Output',       'kW',     '#2a9d8f',       'og_model'),
+  ('energy_efficiency', 'Energy Efficiency',  'mi/kWh', '#ff2828',       'og_model');
 
 -- INITIAL VEHICLE TYPES
 INSERT OR IGNORE INTO vehicle_types (type_name, full_name, engine_id) VALUES 

@@ -58,7 +58,7 @@ def calculate_total_fuel_HEV(v, Power_kW, engineType, parameters):
     miles_per_kWh = distance_miles / total_energy_kWh
 
     return {
-        'model': (HEV_MODEL / 1000).tolist(),
+        'og_model': (HEV_MODEL / 1000).tolist(),
         'kW': total_energy_kWh,
         'L/s': total_fuel,
         'mi/kWh': miles_per_kWh,

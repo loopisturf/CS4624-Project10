@@ -76,7 +76,7 @@ def calculate_total_fuel_BEV(v, power_kW, engine_type, parameters):
     miles_per_gallon = distance_miles / EE_consumed_G
 
     return {
-        'model': (P_net / 1000).tolist(),
+        'og_model': (P_net / 1000).tolist(),
         'EE_recovered_kWh': EE_recovered_kWh,
         'SOC_final_percent': SOCfinal_percent,
         'kW': EE_consumed_kWh,

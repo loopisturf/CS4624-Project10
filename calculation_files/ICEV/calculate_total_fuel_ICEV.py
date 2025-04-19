@@ -44,7 +44,7 @@ def calculate_total_fuel_ICEV(v, Power_kW, engineType, parameters):
     miles_per_kWh = distance_miles / total_energy_kWh
 
     return {
-        'model': MODEL1.tolist(),
+        'og_model': MODEL1.tolist(),
         'kW': total_energy_kWh,
         'L/s': total_fuel,
         'mi/kWh': miles_per_kWh,

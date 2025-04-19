@@ -100,11 +100,19 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
 
     useEffect(() => {
         const processChartData = async () => {
+            // console.log("DATA")
+            // console.log(data)
+            // console.log("speed profile")
+            // console.log(speedProfile)
+            // console.log("SELECTED METRIC")
+            // console.log(selectedMetric)
             if (!data?.model || !speedProfile || !selectedMetric) {
                 setProcessedChartData([]);
                 return;
             }
             const metricConfig = availableMetrics.find(m => m.id === selectedMetric);
+            // console.log("METRIC FONGI")
+            // console.log(metricConfig)
             if (!metricConfig) {
                 setProcessedChartData([]);
                 return;
@@ -116,8 +124,8 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
                 const id = config.id;
                 const engineResult = estimationResults;
 
-                console.log("ESTIMATION")
-                console.log(estimationResults)
+                // console.log("ESTIMATION")
+                // console.log(estimationResults)
 
                 // if (engineResult[selectedUnit] !== undefined && engineResult[selectedUnit] !== 0) {
                 //     filtered[selectedUnit] = engineResult[selectedUnit];
@@ -143,7 +151,8 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
             console.log(newData)
     
             let result = [];
-    
+            // console.log("VISAULIZATIoN TYPE")
+            // console.log(visualizationType)
             switch (visualizationType) {
                 case 'binned': {
                     const binnedData = new Map();
@@ -161,6 +170,8 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
                             // Check if newData is empty and set the flag accordingly
                             if (Object.keys(newData).length != 0) {
                                 const value = metricConfig.processValue(newData.model[index], speed);
+                                console.log("VALUE RIGHT HERE")
+                                console.log(value)
                                 if (!isNaN(value) && isFinite(value)) {
                                     const bin = binnedData.get(binKey);
                                     bin.values.push(value);
@@ -169,7 +180,8 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
                             }
                         }
                     });
-    
+                    console.log("BINNED")
+                    console.log(binnedData.entries())
                     result = Array.from(binnedData.entries())
                         .map(([speed, bin]) => ({
                             speed,
@@ -250,13 +262,12 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
         </div>
         );
     };
-    // console.log("SELECTED METRIC")
-    // console.log(selectedMetric)
-    // console.log(processChartData)
-    // console.log(processChartData.length)
     if (!selectedMetric) {
         return <div className="no-data-message">No data available for visualization</div>;
     }
+
+    // console.log("PROCESS CHART DATA")
+    // console.log(processChartData)
 
     const selectedMetricConfig = availableMetrics.find(m => m.id === selectedMetric);
     return (
