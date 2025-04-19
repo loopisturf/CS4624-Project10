@@ -1,270 +1,203 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './Sidebar.css';
 
-/**
- * Sidebar Component
- * Provides controls for selecting and analyzing different engine types
- * 
- * @param {Object} props
- * @param {boolean} props.isOpen - Controls sidebar visibility
- * @param {Function} props.setEstimationResult - Callback to update estimation results in parent
- * @param {string} props.collectionId - ID of the current data collection
- * @param {string} props.viewMode - Current view mode ('metrics' or 'charts')
- * @param {Function} props.setViewMode - Callback to change view mode
- */
-const Sidebar = ({ isOpen, setEstimationResult, collectionId, viewMode, setViewMode }) => {
-  // State management for component
-  const [engineTypes, setEngineTypes] = useState([]); // Available engine types
-  const [selectedEngines, setSelectedEngines] = useState([]); // Currently selected engines
-  const [loading, setLoading] = useState(false); // Loading state for analysis
-  const [error, setError] = useState(null); // Error messages
-  const [collectionData, setCollectionData] = useState(null); // Speed profile data
-  const [estimationResults, setEstimationResults] = useState({}); // Analysis results
+const Sidebar = ({
+  isOpen,
+  setEstimationResult,
+  collectionId,
+  viewMode,
+  setViewMode
+}) => {
+  const [vehicleTypes, setVehicleTypes] = useState([]);
+  const [vehicleParams, setVehicleParams] = useState([]);
+  const [selected, setSelected] = useState([]);
+  const [collectionData, setCollectionData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  /**
-   * Effect hook to fetch initial data
-   * Loads available engine types and collection data when component mounts
-   */
+  // Fetch types, params, and optionally the current collection
   useEffect(() => {
-    const fetchEngineTypes = async () => {
+    const fetchTypes = async () => {
       try {
-        const response = await fetch('/api/vehicle-types');
-        if (!response.ok) throw new Error('Failed to fetch engine types');
-        const data = await response.json();
-        setEngineTypes(data);
-      } catch (err) {
-        console.error('Error fetching engine types:', err);
-        setError('Failed to load engine types. Please refresh the page.');
+        const res = await fetch('/api/vehicle-types');
+        if (!res.ok) throw new Error();
+        setVehicleTypes(await res.json());
+      } catch {
+        setError('Failed loading engine types');
       }
     };
-
+    const fetchParams = async () => {
+      try {
+        const res = await fetch('/api/vehicle-params');
+        if (!res.ok) throw new Error();
+        setVehicleParams(await res.json());
+      } catch {
+        setError('Failed loading vehicles');
+      }
+    };
     const fetchCollection = async () => {
-      if (collectionId) {
-        try {
-          const response = await fetch(`/api/collections/${collectionId}`);
-          if (!response.ok) throw new Error('Failed to fetch collection');
-          const data = await response.json();
-          setCollectionData(data);
-        } catch (err) {
-          console.error('Error fetching collection:', err);
-          setError('Failed to load collection data. Please refresh the page.');
-        }
+      if (!collectionId) return;
+      try {
+        const res = await fetch(`/api/collections/${collectionId}`);
+        if (!res.ok) throw new Error();
+        setCollectionData(await res.json());
+      } catch {
+        setError('Failed loading collection');
       }
     };
 
-    fetchEngineTypes();
+    fetchTypes();
+    fetchParams();
     fetchCollection();
   }, [collectionId]);
 
-  /**
-   * Reset selections when collection changes
-   */
-  useEffect(() => {
-    setSelectedEngines([]);
-    setEstimationResults({});
-  }, [collectionId]);
-
-  /**
-   * Handles individual engine selection/deselection
-   * @param {number} engineId - ID of the engine to toggle
-   */
-  const handleEngineSelect = (engineId) => {
-    const newSelection = selectedEngines.includes(engineId)
-      ? selectedEngines.filter(id => id !== engineId)
-      : [...selectedEngines, engineId];
-    
-    setSelectedEngines(newSelection);
-    
-    // Clear results for deselected engine
-    if (!newSelection.includes(engineId)) {
-      setEstimationResult(engineId, null);
-    }
+  // Toggle a single vehicle’s selection
+  const toggle = (id) => {
+    setSelected(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      if (!next.includes(id)) setEstimationResult(id, null);
+      return next;
+    });
   };
 
-  /**
-   * Handles select/deselect all engines functionality
-   */
-  const handleSelectAll = () => {
-    if (selectedEngines.length === engineTypes.length) {
-      // If all are selected, deselect all
-      setSelectedEngines([]);
-      engineTypes.forEach(engine => setEstimationResult(engine.id, null));
-    } else {
-      // Select all
-      const allEngineIds = engineTypes.map(engine => engine.id);
-      setSelectedEngines(allEngineIds);
-    }
+  // Toggle multiple selections (global or group)
+  const toggleMultiple = (ids, select) => {
+    setSelected(prev => {
+      let next = select
+        ? Array.from(new Set([...prev, ...ids]))
+        : prev.filter(x => !ids.includes(x));
+      if (!select) {
+        // clear results for removed ids
+        ids.forEach(id => setEstimationResult(id, null));
+      }
+      return next;
+    });
   };
 
-  /**
-   * Initiates analysis for selected engines
-   * Processes each selected engine sequentially and updates results
-   */
+  // Analyze handler
   const handleAnalyze = async () => {
-    // Validation checks
-    if (selectedEngines.length === 0) {
-      setError('Please select at least one engine type');
-      return;
-    }
-
     if (!collectionData?.speed_profile) {
-      setError('No speed profile data available');
+      setError('No speed profile to analyze');
       return;
     }
-
+    if (selected.length === 0) {
+      setError('Select at least one vehicle');
+      return;
+    }
     setLoading(true);
     setError(null);
-
-    // Clear results for deselected engines
-    Object.keys(estimationResults).forEach(engineId => {
-      if (!selectedEngines.includes(Number(engineId))) {
-        setEstimationResult(engineId, null);
-      }
-    });
-
-    // Process each selected engine
-    for (const engineId of selectedEngines) {
+    for (let id of selected) {
       try {
-        // Prepare speed profile data
         const formData = new FormData();
-        const csvContent = collectionData.speed_profile.map(speed => speed.toString()).join('\n');
-        const speedProfileFile = new File([csvContent], 'speed_profile.csv', { type: 'text/csv' });
-        
-        // Set up form data for API request
-        formData.append('file', speedProfileFile);
-        formData.append('vehicle_type_id', engineId);
+        const csv = collectionData.speed_profile.join('\n');
+        formData.append('file', new File([csv], 'speed.csv', { type: 'text/csv' }));
+        formData.append('vehicle_param_id', id);
         formData.append('username', 'user');
         formData.append('collection_id', collectionId);
 
-        // Make API request
-        const response = await fetch('/api/estimate', {
+        const res = await fetch('/api/estimate', {
           method: 'POST',
           body: formData
         });
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload.error || 'Server error');
 
-        const data = await response.json();
-        
-        // Handle API errors
-        if (!response.ok) {
-          console.error(`Failed to analyze engine ${engineId}:`, data.error);
-          setError(prev => 
-            prev ? `${prev}\n${engineTypes.find(t => t.id === engineId)?.name}: ${data.error}` 
-                 : `${engineTypes.find(t => t.id === engineId)?.name}: ${data.error}`
-          );
-          continue;
-        }
-        
-        // Process successful response
-        const result = {
-          ...data,
-          engineType: engineTypes.find(type => type.id === engineId)?.name
-        };
-        // Update results in parent and local state
-        setEstimationResult(engineId, result);
-        setEstimationResults(prev => ({
-          ...prev,
-          [engineId]: result
-        }));
-
-      } catch (error) {
-        console.error(`Error analyzing engine ${engineId}:`, error);
-        setError(prev => 
-          prev ? `${prev}\n${engineTypes.find(t => t.id === engineId)?.name}: ${error.message}`
-               : `${engineTypes.find(t => t.id === engineId)?.name}: ${error.message}`
-        );
-        continue;
+        const p = vehicleParams.find(v => v.id === id) || {};
+        setEstimationResult(id, {
+          ...payload,
+          make: p.make, model: p.model, year: p.year,
+          label: `${p.make} ${p.model} (${p.year})`
+        });
+      } catch (e) {
+        setError(e.message);
       }
     }
-
     setLoading(false);
   };
+
+  // Compute global select-all state
+  const allIds = vehicleParams.map(v => v.id);
+  const allSelected = allIds.length > 0 && allIds.every(id => selected.includes(id));
+  const allIndeterminate = selected.length > 0 && selected.length < allIds.length;
 
   return (
     <aside className="sidebar-container" data-open={isOpen}>
       <div className="sidebar-content">
-        <h2 className="sidebar-title">Select Engine Types</h2>
-        
-        {/* Error message display */}
-        {error && (
-          <div className="error-message" role="alert">
-            {error}
-          </div>
-        )}
+        <h2 className="sidebar-title">Select Vehicles</h2>
+        {error && <div className="error-message">{error}</div>}
 
-        {/* View mode toggle buttons */}
-        <div className="view-toggle sidebar-view-toggle">
-          <button 
-            className={`toggle-button ${viewMode === 'metrics' ? 'active' : ''}`}
-            onClick={() => setViewMode('metrics')}
-          >
-            Key Metrics
-          </button>
-          <button 
-            className={`toggle-button ${viewMode === 'charts' ? 'active' : ''}`}
-            onClick={() => setViewMode('charts')}
-          >
-            Efficiency Analysis
-          </button>
+        {/* Global Select All */}
+        <div className="engine-option select-all-global">
+          <input
+            type="checkbox"
+            ref={el => el && (el.indeterminate = allIndeterminate)}
+            checked={allSelected}
+            onChange={e => toggleMultiple(allIds, e.target.checked)}
+            disabled={loading}
+            className="engine-checkbox"
+          />
+          <label className="engine-label"><strong>Select All Vehicles</strong></label>
         </div>
 
-        {/* Engine selection list */}
+        {/* Grouped list */}
         <div className="engine-list">
-          {/* Select all checkbox */}
-          <div className="engine-option select-all">
-            <input
-              type="checkbox"
-              id="select-all"
-              checked={selectedEngines.length === engineTypes.length}
-              onChange={handleSelectAll}
-              disabled={loading}
-              className="engine-checkbox"
-              aria-label="Select all engine types"
-            />
-            <label htmlFor="select-all" className="engine-label">
-              Select All
-            </label>
-          </div>
-          
-          {/* Individual engine checkboxes */}
-          {engineTypes.map(engine => (
-            <div key={engine.id} className="engine-option">
-              <input
-                type="checkbox"
-                id={`engine-${engine.id}`}
-                checked={selectedEngines.includes(engine.id)}
-                onChange={() => handleEngineSelect(engine.id)}
-                disabled={loading}
-                className="engine-checkbox"
-                aria-label={`Select ${engine.name}`}
-              />
-              <label htmlFor={`engine-${engine.id}`} className="engine-label">
-                {engine.name}
-              </label>
-            </div>
-          ))}
+          {vehicleTypes.map(type => {
+            const cars = vehicleParams.filter(p => p.vehicle_type_id === type.id);
+            const groupIds = cars.map(c => c.id);
+            const groupSelected = groupIds.length > 0 && groupIds.every(id => selected.includes(id));
+            const groupIndeterminate = groupIds.some(id => selected.includes(id)) && !groupSelected;
+
+            return (
+              <div key={type.id} className="engine-group">
+                <div className="engine-group-header">
+                  <input
+                    type="checkbox"
+                    ref={el => el && (el.indeterminate = groupIndeterminate)}
+                    checked={groupSelected}
+                    onChange={e => toggleMultiple(groupIds, e.target.checked)}
+                    disabled={loading}
+                    className="engine-checkbox"
+                  />
+                  <span>{type.full_name}</span>
+                </div>
+
+                {cars.length > 0
+                  ? cars.map(car => (
+                      <div key={car.id} className="engine-option">
+                        <input
+                          type="checkbox"
+                          checked={selected.includes(car.id)}
+                          onChange={() => toggle(car.id)}
+                          disabled={loading}
+                          className="engine-checkbox"
+                        />
+                        <label className="engine-label">
+                          {car.make} {car.model} ({car.year})
+                        </label>
+                      </div>
+                    ))
+                  : (
+                    <div className="no-vehicles">No vehicles</div>
+                  )
+                }
+              </div>
+            );
+          })}
         </div>
 
-        {/* Analysis buttons */}
-        <button onClick={() => {
-            // First analyze individually then set view mode to 'individual'
-            handleAnalyze();
-            setViewMode('individual');
-          }} 
+        {/* Action buttons */}
+        <button
+          onClick={() => { handleAnalyze(); setViewMode('individual'); }}
           className="analyze-button"
         >
-          Analyze Selected Engines
+          Analyze Selected
         </button>
-
-        <button onClick={() => {
-            // Analyze and then show combined view
-            handleAnalyze();
-            setViewMode('combined');
-          }} 
+        <button
+          onClick={() => { handleAnalyze(); setViewMode('combined'); }}
           className="analyze-button"
         >
-          Analyze Selected Engines Together
-        </button> 
-
+          Combined Analysis
+        </button>
       </div>
     </aside>
   );

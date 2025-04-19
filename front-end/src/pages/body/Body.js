@@ -633,17 +633,17 @@ const CombinedEnergyChart = ({ estimationResults, collection }) => {
             <Tooltip content={<CustomTooltip />} />
             <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '11px', paddingLeft: '40px' }} />
             {Object.keys(estimationResults)
-              .filter(engineId => estimationResults[engineId] != null)
-              .map((engineId, index) => {
+              .filter(pid => estimationResults[pid] != null)
+              .map((pid, index) => {
                 const colors = ['#e63946', '#457b9d', '#2a9d8f', '#f4a261', '#8b1e3f'];
                 const color = colors[index % colors.length];
                 return (
                   <Line
-                    key={engineId}
+                    key={pid}
                     type="monotone"
-                    dataKey={engineId}
+                    dataKey={pid}
                     stroke={color}
-                    name={`Engine ${engineId}`}
+                    name={estimationResults[pid].label}
                     dot={false}
                     activeDot={{ r: 4 }}
                     strokeWidth={2}
@@ -679,10 +679,14 @@ function Body({ isSidebarOpen }) {
         setCollection(data);
         
         const convertedResults = {};
-        Object.entries(data.results || {}).forEach(([vehicleTypeId, result]) => {
-          convertedResults[vehicleTypeId] = {
-            ...result.result_data,
-            engineType: result.vehicle_type
+        Object.entries(data.results || {}).forEach(([paramId, result]) => {
+          const rd = result.result_data;
+          convertedResults[paramId] = {
+            ...rd,
+            make: rd.make,
+            model: rd.model,
+            year: rd.year,
+            label: `${rd.make} ${rd.model} (${rd.year})`
           };
         });
         setEstimationResults(convertedResults);
@@ -759,10 +763,10 @@ function Body({ isSidebarOpen }) {
               .filter(([id, result]) => result != null)
               .map(([id, result]) => (
                 <div key={id} className="result-card">
-                  <h2 className="result-title">{result.engineType}</h2>
+                  <h2 className="result-title">{result.label}</h2>
                   <EnergyChart
                     data={result}
-                    engineType={result.engineType}
+                    engineType={result.label}
                     speedProfile={collection?.speed_profile}
                   />
                 </div>
@@ -774,7 +778,7 @@ function Body({ isSidebarOpen }) {
                 .map(([id, result]) => (
                   <MetricCard
                     key={id}
-                    label={result.engineType}
+                    label={result.label}
                     value={result.total_energy_kWh || 0}
                     unit="kWh"
                   />

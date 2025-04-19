@@ -46,7 +46,7 @@ const Vehicles = () => {
 
   const handleAddVehicleType = async (e) => {
     e.preventDefault();
-    
+
     if (!newType.abbreviation || !newType.fullName || !newType.engineId) {
       setError('All fields are required');
       return;
@@ -141,109 +141,188 @@ const Vehicles = () => {
     return colorClasses[index % colorClasses.length];
   };
 
-  const renderVehicleTypesReference = () => (
+  const [showVehicleModal, setShowVehicleModal] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState(null);
+  const [newVehicle, setNewVehicle] = useState({
+    vehicle_type_id: '',
+    make: '',
+    model: '',
+    year: '',
+    param_string: ''
+  });
+
+  // --- grouping vehicles by type ---
+  const groupedVehicles = vehicleTypes.reduce((acc, type) => {
+    acc[type.id] = { type, items: [] };
+    return acc;
+  }, {});
+  vehicleParams.forEach(v => {
+    if (groupedVehicles[v.vehicle_type_id]) {
+      groupedVehicles[v.vehicle_type_id].items.push(v);
+    }
+  });
+
+  // --- open modal for add/edit ---
+  const openVehicleModal = (vehicle = null) => {
+    if (vehicle) {
+      setEditingVehicle(vehicle.id);
+      setNewVehicle({
+        vehicle_type_id: vehicle.vehicle_type_id,
+        make: vehicle.make,
+        model: vehicle.model,
+        year: vehicle.year,
+        param_string: vehicle.param_string
+      });
+    } else {
+      setEditingVehicle(null);
+      setNewVehicle({ vehicle_type_id: '', make: '', model: '', year: '', param_string: '' });
+    }
+    setShowVehicleModal(true);
+  };
+
+  // --- handler to save via API ---
+  const handleSaveVehicle = async e => {
+    e.preventDefault();
+    setLoading(true);
+    const url = editingVehicle
+      ? `/api/admin/vehicle-params/${editingVehicle}`
+      : '/api/admin/vehicle-params';
+    const method = editingVehicle ? 'PUT' : 'POST';
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${btoa(`${ADMIN_USERNAME}:${ADMIN_PASSWORD}`)}`
+        },
+        body: JSON.stringify(newVehicle)
+      });
+      if (!response.ok) throw new Error('Save failed');
+      await fetchVehicleParams();
+      setShowVehicleModal(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- updated renderVehicles ---
+  const renderVehicles = () => (
     <div className="vehicle-types-reference">
       <div className="reference-header">
-        <h3 className="subtitle">Available Vehicle Types</h3>
-        <button 
-          className="add-type-button"
-          onClick={() => setShowTypeModal(true)}
-        >
-          Add New Vehicle Type
+        <h3 className="subtitle">Available Vehicles</h3>
+        <button className="add-type-button" onClick={() => openVehicleModal()}>
+          Add New Vehicle
         </button>
       </div>
-      <table className="reference-table">
-        <thead>
-          <tr>
-            <th>Abbreviation</th>
-            <th>Full Name</th>
-            <th>Engine Type ID</th>
-          </tr>
-        </thead>
-        <tbody>
-          {vehicleTypes.map((type, index) => (
-            <tr key={type.id}>
-              <td>
-                <div className={`type_name ${getColorClass(index)}`}>
-                  {type.name}
-                </div>
-              </td>
-              <td>{type.full_name}</td>
-              <td>{type.engine_id}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {vehicleTypes.map((type, i) => (
+        <div key={type.id} className="vehicle-group">
+          <h4 className="subtitle" style={{ marginTop: '1rem' }}>{type.full_name}</h4>
+          <table className="reference-table">
+            <thead>
+              <tr>
+                <th>Make</th>
+                <th>Model</th>
+                <th>Year</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {groupedVehicles[type.id]?.items.map(v => (
+                <tr key={v.id}>
+                  <td>{v.make}</td>
+                  <td>{v.model}</td>
+                  <td>{v.year}</td>
+                  <td>
+                    <button className="toggle-button" onClick={() => openVehicleModal(v)}>
+                      Edit
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {groupedVehicles[type.id]?.items.length === 0 && (
+                <tr><td colSpan="4" className="no-data">No vehicles</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      ))}
     </div>
   );
 
-  const renderAddTypeModal = () => (
+  // --- updated renderVehicleModal ---
+  const renderVehicleModal = () => (
     <div className="modal-overlay">
       <div className="modal-content">
         <div className="modal-header">
-          <h3>Add New Vehicle Type</h3>
-          <button className="close-button" onClick={() => setShowTypeModal(false)}>×</button>
+          <h3>{editingVehicle ? 'Edit Vehicle' : 'Add New Vehicle'}</h3>
+          <button className="close-button" onClick={() => setShowVehicleModal(false)}>×</button>
         </div>
         <div className="modal-body">
-          <p className="info-text">
-            After adding a new vehicle type, remember to:
-            <ul>
-              <li>Implement its calculation function in getEnergy.py</li>
-              <li>Update the engine type mapping in the upload parameters logic</li>
-              <li>Upload parameter files that use the new type</li>
-            </ul>
-          </p>
-          <form onSubmit={handleAddVehicleType}>
+          <form onSubmit={handleSaveVehicle}>
             <div className="form-group">
-              <label>Abbreviation:</label>
+              <label>Engine Type:</label>
+              <select
+                value={newVehicle.vehicle_type_id}
+                onChange={e => setNewVehicle(prev => ({ ...prev, vehicle_type_id: e.target.value }))}
+                className="type-input"
+                required
+              >
+                <option value="">-- Select --</option>
+                {vehicleTypes.map(t => (
+                  <option key={t.id} value={t.id}>{t.full_name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Make:</label>
               <input
                 type="text"
-                value={newType.abbreviation}
-                onChange={(e) => setNewType(prev => ({ 
-                  ...prev, 
-                  abbreviation: e.target.value 
-                }))}
-                placeholder="e.g., PHEV"
+                value={newVehicle.make}
+                onChange={e => setNewVehicle(prev => ({ ...prev, make: e.target.value }))}
                 className="type-input"
+                required
               />
             </div>
             <div className="form-group">
-              <label>Full Name:</label>
+              <label>Model:</label>
               <input
                 type="text"
-                value={newType.fullName}
-                onChange={(e) => setNewType(prev => ({ 
-                  ...prev, 
-                  fullName: e.target.value 
-                }))}
-                placeholder="e.g., Plug-in Hybrid Electric Vehicle"
+                value={newVehicle.model}
+                onChange={e => setNewVehicle(prev => ({ ...prev, model: e.target.value }))}
                 className="type-input"
+                required
               />
             </div>
             <div className="form-group">
-              <label>Engine Type ID:</label>
+              <label>Year:</label>
               <input
                 type="number"
-                value={newType.engineId}
-                onChange={(e) => setNewType(prev => ({ 
-                  ...prev, 
-                  engineId: e.target.value 
-                }))}
-                placeholder="e.g., 5"
+                value={newVehicle.year}
+                onChange={e => setNewVehicle(prev => ({ ...prev, year: e.target.value }))}
                 className="type-input"
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Param String:</label>
+              <textarea
+                value={newVehicle.param_string}
+                onChange={e => setNewVehicle(prev => ({ ...prev, param_string: e.target.value }))}
+                className="type-input"
+                rows={3}
+                required
               />
             </div>
             <div className="button-group">
               <button type="submit" className="submit-button" disabled={loading}>
-                {loading ? 'Adding...' : 'Add Type'}
+                {loading ? 'Saving...' : 'Save'}
               </button>
               <button
                 type="button"
                 className="cancel-button"
-                onClick={() => {
-                  setShowTypeModal(false);
-                  setNewType({ abbreviation: '', fullName: '', engineId: '' });
-                }}
+                onClick={() => setShowVehicleModal(false)}
                 disabled={loading}
               >
                 Cancel
@@ -255,14 +334,17 @@ const Vehicles = () => {
     </div>
   );
 
+
   const renderTable = () => (
     <div className="table-container">
       <table className="vehicle-params-table">
         <thead>
           <tr>
             <th>ID</th>
-            <th>Engine Type</th>
             <th>Type</th>
+            <th>Make</th>
+            <th>Model</th>
+            <th>Year</th>
             <th>Mass (kg)</th>
             <th>Length (m)</th>
             <th>Mass Proportion</th>
@@ -297,16 +379,17 @@ const Vehicles = () => {
           {vehicleParams.length > 0 ? (
             vehicleParams.map((param, index) => {
               const values = param.param_string.split(" ");
-              const vehicleType = vehicleTypes.find(vt => vt.name === param.type_name);
               return (
                 <tr key={index}>
                   <td>{param.id}</td>
-                  <td>{vehicleType?.full_name || param.type_name}</td>
                   <td>
                     <div className={`type_name ${getColorClass(index)}`}>
                       {param.type_name}
                     </div>
                   </td>
+                  <td>{param.make}</td>
+                  <td>{param.model}</td>
+                  <td>{param.year}</td>
                   {values.slice(2).map((value, idx) => (
                     <td key={idx}>{Number(value).toLocaleString(undefined, {
                       minimumFractionDigits: 0,
@@ -328,38 +411,15 @@ const Vehicles = () => {
     </div>
   );
 
-  const renderUploadSection = () => (
-    <div className="upload-container">
-      <div className="upload-content">
-        <input
-          type="file"
-          id="file-upload"
-          onChange={handleFileUpload}
-          accept=".txt,.dat"
-          className="file-input"
-          disabled={loading}
-        />
-        <label htmlFor="file-upload" className="upload-label">
-          <span className="upload-icon">⇧</span>
-          <div className="upload-text">
-            {loading ? 'Uploading...' : 'Upload Vehicle Parameters File'}
-            <span className="file-type">TXT or CSV</span>
-          </div>
-        </label>
-      </div>
-      {error && <div className="error-message">{error}</div>}
-    </div>
-  );
-
   const renderFormatGuide = () => (
     <div className="format-guide">
       <div className="format-guide-header">
         <h3 className="guide-title">File Format Requirements</h3>
       </div>
-      
+
       <div className="guide-content">
         <p>Each line represents one vehicle configuration with space-separated values:</p>
-        
+
         <div className="param-columns">
           <div className="param-group">
             <h5>Vehicle Identification</h5>
@@ -374,7 +434,7 @@ const Vehicles = () => {
               </li>
             </ul>
           </div>
-  
+
           <div className="param-group">
             <h5>Physical Properties</h5>
             <ul>
@@ -386,7 +446,7 @@ const Vehicles = () => {
               <li><strong>Column 8:</strong> Maximum battery power (kW)</li>
             </ul>
           </div>
-  
+
           <div className="param-group">
             <h5>Operation Parameters</h5>
             <ul>
@@ -398,7 +458,7 @@ const Vehicles = () => {
             </ul>
           </div>
         </div>
-  
+
         <div className="example-line">
           <h5>Example:</h5>
           <code>1 3 1981 4.75 0.6 0.5 317 317 0.92 0.23 2.652 1.75 ...</code>
@@ -421,12 +481,11 @@ const Vehicles = () => {
         <p className="section-description">
           Manage vehicle types and upload parameter configurations.
         </p>
-        {renderVehicleTypesReference()}
-        {renderUploadSection()}
+        {renderVehicles()}
         {renderFormatGuide()}
       </section>
 
-      {showTypeModal && renderAddTypeModal()}
+      {showVehicleModal && renderVehicleModal()}
     </div>
   );
 };
