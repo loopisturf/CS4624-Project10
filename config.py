@@ -13,7 +13,6 @@ ETA_DRIVELINE = 0.92  # Trasmission efficiency. Rakha et al. (2011).
 ETA_EM = 0.96   # Orignial 0.91;  eta_em=-0.0007speed+0.95
 ETA_BATTERY = 0.90  # Original 0.90; Battery system efficiency. 
 
-# updated by Layla to correct the JSON format so she could access it.
 VEHICLE_TYPES = [
     {"id": 1, "name": "Internal Combustion Engine Vehicles", "abbreviation": "ICEV"},
     {"id": 2, "name": "Battery Electric Vehicles", "abbreviation": "BEV"},

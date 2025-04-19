@@ -184,6 +184,18 @@ const Vehicles = () => {
   const handleSaveVehicle = async e => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
+    // ── VALIDATE PARAM STRING LENGTH ──
+    const parts = newVehicle.param_string.trim().split(/\s+/);
+    if (parts.length === 29) {
+      newVehicle.param_string = '0 ' + newVehicle.param_string;
+    }
+    else if (parts.length !== 30) {
+      setLoading(false);
+      alert('Param String must be exactly 29 numeric values, space‑separated');
+      return;
+    }
+
     const url = editingVehicle
       ? `/api/admin/vehicle-params/${editingVehicle}`
       : '/api/admin/vehicle-params';
@@ -197,7 +209,11 @@ const Vehicles = () => {
         },
         body: JSON.stringify(newVehicle)
       });
-      if (!response.ok) throw new Error('Save failed');
+      if (!response.ok) {
+        const err = await response.json().catch(() => null);
+        alert((err && err.error) || 'Save failed');
+        throw new Error('Save failed');
+      }
       await fetchVehicleParams();
       setShowVehicleModal(false);
     } catch (err) {
@@ -235,8 +251,35 @@ const Vehicles = () => {
                   <td>{v.model}</td>
                   <td>{v.year}</td>
                   <td>
-                    <button className="toggle-button" onClick={() => openVehicleModal(v)}>
-                      Edit
+                    <button onClick={() => openVehicleModal(v)}>Edit</button>
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm('Really delete this vehicle?')) return;
+                        setLoading(true);
+                        setError(null);
+                        try {
+                          const res = await fetch(`/api/admin/vehicle-params/${v.id}`, {
+                            method: 'DELETE',
+                            headers: {
+                              'Authorization': `Basic ${btoa(`${ADMIN_USERNAME}:${ADMIN_PASSWORD}`)}`
+                            }
+                          });
+                          if (!res.ok) {
+                            const err = await res.json().catch(() => null);
+                            throw new Error((err && err.error) || 'Delete failed');
+                          }
+                          // remove it from local state immediately:
+                          setVehicleParams(prev => prev.filter(p => p.id !== v.id));
+                        } catch (err) {
+                          setError(err.message);
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      disabled={loading}
+                      style={{ marginLeft: '0.5rem' }}
+                    >
+                      Delete
                     </button>
                   </td>
                 </tr>
