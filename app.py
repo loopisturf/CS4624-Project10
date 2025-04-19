@@ -781,6 +781,8 @@ def get_metrics():
     finally:
         conn.close()
 
+
+
 @app.route('/api/metrics', methods=['POST'])
 def add_metric():
     """Add a new metric."""

@@ -10,6 +10,7 @@ from calculation_files.all import *
 import os
 import importlib
 
+
 def getEnergy(selection, speed_data, param_list):
     # Convert speed from km/h to m/s
     v = np.array(speed_data) / 3.6  
@@ -24,6 +25,21 @@ def getEnergy(selection, speed_data, param_list):
      Gr1, Gr2, Effi_batt_ev, Min_SOC, Max_SOC, start_SOC, Effi_ev_motor,
      Effi_regen, SOC_limit_PHEV_s, Batt_capacity, Aux_consumption,
      Alpha_0, Alpha_1, Alpha_2, Alpha_3) = map(float, param_list)
+
+    param_names = [
+    'var01', 'powertrain', 'veh_mass', 'Veh_length', 'Prop_trac_axle', 'coef_friction',
+    'Eng_Power', 'Max_Power', 'Effi_trans', 'Cd', 'Af', 'Cr', 'c1', 'c2', 'Pedal_input',
+    'Gr1', 'Gr2', 'Effi_batt_ev', 'Min_SOC', 'Max_SOC', 'start_SOC', 'Effi_ev_motor',
+    'Effi_regen', 'SOC_limit_PHEV_s', 'Batt_capacity', 'Aux_consumption',
+    'Alpha_0', 'Alpha_1', 'Alpha_2', 'Alpha_3'
+    ]
+
+    # Convert string values to float
+    param_values = list(map(float, param_list))
+
+    # Combine names and values into a dictionary
+    param_dict = dict(zip(param_names, param_values))
+
 
     # Vehicle and battery parameters
     m = veh_mass
@@ -48,10 +64,30 @@ def getEnergy(selection, speed_data, param_list):
     # Component efficiency
     comp_eta = ETA_BATTERY * ETA_DRIVELINE * ETA_EM
 
+    param_dict.update({
+        'accel': accel,
+        'SOCmin': Min_SOC,
+        'SOC0': SOC0,
+        'BattCapacity_Wh': BattCapacity_Wh,
+        'P_aux': P_aux,
+        'F_In': F_In,
+        'F_Roll': F_Roll,
+        'F_Aero': F_Aero,
+        'F_Slope': F_Slope,
+        'F_wheels': F_wheels,
+        'P_wheels': P_wheels,
+        'w_wheels_rads': w_wheels_rads,
+        'w_em_rads': w_em_rads,
+        'comp_eta': comp_eta
+    })
+    print("PARAM DICT")
+    print(param_dict)
+
    
     # Select the subdirectory based on the selection input
     subdirectory = None
     args = None
+    result = None
     if selection == 1:  # ICEV
         subdirectory = "ICEV"
         parameters = {
@@ -59,38 +95,40 @@ def getEnergy(selection, speed_data, param_list):
             'Alpha_1': Alpha_1,
             'Alpha_2': Alpha_2
         }
-        args = [v, Power_kW, "ICEV", parameters]
+        # print("PARAMETERS HERE")
+        # print(parameters)
+        args = [v, Power_kW, "ICEV", param_dict]
 
     elif selection == 2:  # BEV
         subdirectory = "BEV"
-        parameters = {
-            'w_em_rads': w_em_rads,
-            'SOC0': SOC0,
-            'SOCmin': SOCmin,
-            'BattCapacity_Wh': BattCapacity_Wh,
-            'P_aux': P_aux,
-            'comp_eta': comp_eta,
-            'accel': accel,
-            'P_wheels': P_wheels
-        }
-        args = [v, Power_kW, "BEV", parameters]
+        # parameters = {
+        #     'w_em_rads': w_em_rads,
+        #     'SOC0': SOC0,
+        #     'SOCmin': SOCmin,
+        #     'BattCapacity_Wh': BattCapacity_Wh,
+        #     'P_aux': P_aux,
+        #     'comp_eta': comp_eta,
+        #     'accel': accel,
+        #     'P_wheels': P_wheels
+        # }
+        args = [v, Power_kW, "BEV", param_dict]
 
     elif selection == 3:  # HEV
         subdirectory = "HEV"
-        parameters = {
-            'Alpha_0': Alpha_0,
-            'Alpha_1': Alpha_1,
-            'Alpha_2': Alpha_2,
-            'Alpha_3': Alpha_3
-        }
-        args = [v, Power_kW, "HEV", parameters]
+        # parameters = {
+        #     'Alpha_0': Alpha_0,
+        #     'Alpha_1': Alpha_1,
+        #     'Alpha_2': Alpha_2,
+        #     'Alpha_3': Alpha_3
+        # }
+        args = [v, Power_kW, "HEV", param_dict]
 
     elif selection == 4:  # HFCV
         subdirectory = "HFCV"
-        parameters = {
-            'Max_Power': Max_Power
-        }
-        args = [v, Power_kW, "HFCV", parameters]
+        # parameters = {
+        #     'Max_Power': Max_Power
+        # }
+        args = [v, Power_kW, "HFCV", param_dict]
 
     else:
         raise ValueError('Invalid input. Please enter a number between 1 and 4.')
@@ -115,7 +153,10 @@ def getEnergy(selection, speed_data, param_list):
             func = getattr(module, module_name)  # Assumes function name matches filename
 
             # Call the function with the appropriate arguments based on the selection
-            out = func(*args)
+            if out is not None:
+                out.update(func(*args))
+            else:
+                out = func(*args)
 
     # If no function was called (out is still None), raise an error
     if out is None:
@@ -136,7 +177,10 @@ def getEnergy(selection, speed_data, param_list):
             func = getattr(module, module_name)  # Assumes function name matches filename
 
             # Call the function with the appropriate arguments (same as above)
-            all_out = func(*args)
+            if all_out is not None:
+                all_out.update(func(*args))
+            else:
+                all_out = func(*args)
 
     result = None
     if out is not None and all_out is not None:
@@ -148,5 +192,5 @@ def getEnergy(selection, speed_data, param_list):
     else:
         result = out
     print("result")
-    print(result)
+    print(type(result))
     return result
