@@ -54,8 +54,9 @@ def ParticleMatter(v, power_kw, engineType, parameters):
         pm2_5 = pm25_brake + pm25_tire
         total_pm2_5 += pm2_5
         pm_model_list.append(pm2_5)
+        # ADD DISTANCE
 
     return {
         'pm_model': pm_model_list,  # PM2.5 per input speed/power pair
-        'micrometers': total_pm2_5
+        'mg': total_pm2_5
     }
