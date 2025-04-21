@@ -457,7 +457,7 @@ const Vehicles = () => {
   const renderFormatGuide = () => (
     <div className="format-guide">
       <div className="format-guide-header">
-        <h3 className="guide-title">File Format Requirements</h3>
+        <h3 className="guide-title">Parameter Format Requirements</h3>
       </div>
 
       <div className="guide-content">
@@ -467,8 +467,7 @@ const Vehicles = () => {
           <div className="param-group">
             <h5>Vehicle Identification</h5>
             <ul>
-              <li><strong>Column 1:</strong> Vehicle type number (1-25)</li>
-              <li><strong>Column 2:</strong> Engine type:
+              <li><strong>Column 1:</strong> Engine type:
                 <ul>
                   {vehicleTypes.map(type => (
                     <li key={type.id}>{type.engine_id}: {type.name} ({type.full_name})</li>
@@ -481,30 +480,30 @@ const Vehicles = () => {
           <div className="param-group">
             <h5>Physical Properties</h5>
             <ul>
-              <li><strong>Column 3:</strong> Vehicle mass (kg)</li>
-              <li><strong>Column 4:</strong> Vehicle length (m)</li>
-              <li><strong>Column 5:</strong> Mass proportion on tractive axle</li>
-              <li><strong>Column 6:</strong> Coefficient of friction</li>
-              <li><strong>Column 7:</strong> Engine power (kW)</li>
-              <li><strong>Column 8:</strong> Maximum battery power (kW)</li>
+              <li><strong>Column 2:</strong> Vehicle mass (kg)</li>
+              <li><strong>Column 3:</strong> Vehicle length (m)</li>
+              <li><strong>Column 4:</strong> Mass proportion on tractive axle</li>
+              <li><strong>Column 5:</strong> Coefficient of friction</li>
+              <li><strong>Column 6:</strong> Engine power (kW)</li>
+              <li><strong>Column 7:</strong> Maximum battery power (kW)</li>
             </ul>
           </div>
 
           <div className="param-group">
             <h5>Operation Parameters</h5>
             <ul>
-              <li><strong>Column 9-14:</strong> Performance coefficients</li>
-              <li><strong>Column 15-17:</strong> Driver and gear parameters</li>
-              <li><strong>Column 18-23:</strong> Battery and motor parameters</li>
-              <li><strong>Column 24-26:</strong> Power management</li>
-              <li><strong>Column 27-30:</strong> Model coefficients (α₀-α₃)</li>
+              <li><strong>Column 9-13:</strong> Performance coefficients</li>
+              <li><strong>Column 14-16:</strong> Driver and gear parameters</li>
+              <li><strong>Column 17-22:</strong> Battery and motor parameters</li>
+              <li><strong>Column 23-25:</strong> Power management</li>
+              <li><strong>Column 26-29:</strong> Model coefficients (α₀-α₃)</li>
             </ul>
           </div>
         </div>
 
         <div className="example-line">
           <h5>Example:</h5>
-          <code>1 3 1981 4.75 0.6 0.5 317 317 0.92 0.23 2.652 1.75 ...</code>
+          <code>3 1981 4.75 0.6 0.5 317 317 0.92 0.23 2.652 1.75 ...</code>
           <p className="example-desc">Battery Electric Vehicle (BEV) configuration</p>
         </div>
       </div>

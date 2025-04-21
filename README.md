@@ -69,7 +69,7 @@ deactivate
 ```
 2. If this is the first time set up:
    ```
-   npm install react-scripts@latest
+   npm install react-scripts@latest react-plotly.js plotly.js
    ```
 
 3. Then run rest of npm installs and start
