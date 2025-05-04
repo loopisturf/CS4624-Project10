@@ -1,23 +1,26 @@
-# Use official Node.js image
 FROM node:18
 
-# Set the working directory inside the container
 WORKDIR /app
 
 # Copy package.json and package-lock.json first to leverage Docker cache
 COPY package*.json ./
 
-# Install dependencies (this should still be done inside Docker)
+# Install dependencies
 RUN npm install
 
-# Copy the pre-built React app from the local machine (host) to the container
-COPY ./front-end/build ./build
+# Copy the rest of the React app code
+COPY . /app
 
-# Install 'serve' globally to serve the static files
+# If the build folder is already created outside the container, skip this step
+# Ensure that `npm run build` was already run outside of Docker before this step
+# You can comment out the `RUN npm run build` if it's done externally
+# RUN npm run build
+
+# Install the 'serve' package to serve the static files
 RUN npm install -g serve
 
-# Expose port 3000
+# Expose the React app port
 EXPOSE 3000
 
-# Serve the pre-built React app on port 3000
+# Serve the built React app on port 3000
 CMD ["serve", "-s", "build", "-l", "3000"]
