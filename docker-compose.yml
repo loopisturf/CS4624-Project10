@@ -2,14 +2,14 @@ version: '3.8'
 services:
   frontend:
     build:
-      context: ./frontend  # This assumes your Dockerfile.frontend is in ./frontend directory
+      context: ./front-end  # This assumes your Dockerfile.frontend is in ./frontend directory
       dockerfile: Dockerfile.frontend  # Ensure it uses the correct Dockerfile
     ports:
       - "3000:3000"  # Expose React app on port 3000
     environment:
       - REACT_APP_API_URL=http://backend:5000  # Frontend will access backend via this URL
     volumes:
-      - ./frontend/build:/app/build  # Mount the local build folder to the container
+      - ./front-end/build:/app/build  # Mount the local build folder to the container
 
   backend:
     build:
@@ -19,5 +19,5 @@ services:
       - "5000:5000"  # Expose Flask backend on port 5000
     volumes:
       - ./energy_estimation.db:/app/energy_estimation.db  # Mount the database file
-      - ./frontend/build:/app/static/react_build  # Mount React build folder for Flask to serve static files
+      - ./front-end/build:/app/static/react_build  # Mount React build folder for Flask to serve static files
     env_file: .env  # Ensure environment variables are set up

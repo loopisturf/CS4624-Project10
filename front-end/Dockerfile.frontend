@@ -11,7 +11,7 @@ COPY package*.json ./
 RUN npm install
 
 # Copy the pre-built React app from the local machine (host) to the container
-COPY ./frontend/build ./build
+COPY ./front-end/build ./build
 
 # Install 'serve' globally to serve the static files
 RUN npm install -g serve
