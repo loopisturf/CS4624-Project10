@@ -8,11 +8,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the backend code
+# Copy backend code
 COPY . .
 
-# Copy the built React app (frontend/build) into the backend image
-COPY ./front-end/build ./static/react_build  # Ensure the build folder is copied locally
+# The build folder is already mounted as a volume from docker-compose
+# No need to copy it manually anymore
 
 # Command to run the Flask app
 CMD ["python", "app.py"]
