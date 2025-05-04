@@ -24,7 +24,7 @@ from werkzeug.exceptions import HTTPException
 # Load environment variables
 load_dotenv()
 
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__, static_folder='static/react_build')
 app.config['PROPAGATE_EXCEPTIONS'] = False
 CORS(app)
 
