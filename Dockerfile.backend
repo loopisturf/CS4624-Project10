@@ -1,0 +1,16 @@
+# Dockerfile.backend
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy backend code
+COPY . .
+
+# Copy the frontend build (React build) into a specific subfolder inside static/
+COPY ../front-end/build ./static/react_build
+
+CMD ["python", "app.py"]

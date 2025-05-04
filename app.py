@@ -28,6 +28,21 @@ app = Flask(__name__, static_folder='static')
 app.config['PROPAGATE_EXCEPTIONS'] = False
 CORS(app)
 
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_react(path):
+    # Define the path to the React build folder inside the static folder (react_build subfolder)
+    react_build_folder = os.path.join(app.static_folder, 'react_build')
+    
+    # Check if the requested file exists in the React build folder
+    if path != "" and os.path.exists(os.path.join(react_build_folder, path)):
+        return send_from_directory(react_build_folder, path)
+    else:
+        # If the requested file doesn't exist, serve the index.html from the React build folder
+        return send_from_directory(react_build_folder, 'index.html')
+
+
 # --------------------------------------------------
 @app.errorhandler(Exception)
 def handle_all_errors(e):
@@ -543,8 +558,6 @@ def estimate_energy():
         # 3) call getEnergy with the *type* id, not the param PK
         try:
             result = getEnergy(vehicle_type_id, speed_data, param_list)
-            print("result")
-            print(result)
         except Exception as calc_error:
             return jsonify({"error": f"Energy calculation failed: {calc_error}"}), 400
 
@@ -813,8 +826,6 @@ def update_collection(collection_id):
 @app.route('/api/get_metric', methods=['GET'])
 def get_metric():
     metric_id = request.args.get('id')
-    # print("metric_id")
-    # print(metric_id)
     if not metric_id:
         return jsonify({'error': 'Missing id parameter'}), 400
 
@@ -824,16 +835,12 @@ def get_metric():
 
         cursor.execute("SELECT * FROM metrics WHERE id = ?", (metric_id,))
         row = cursor.fetchone()
-        # print("rows")
-        # print(row)
         conn.close()
 
         if row:
             result = {
                 'valueKey': row[4]
             }
-            # print("model backend")
-            # print(result)
             return jsonify(result)
         else:
             return jsonify({'error': 'Metric not found'}), 404
@@ -868,7 +875,6 @@ def add_metric():
     metric_name = request.form.get('metricName')
     metric_units = request.form.get('metricUnits')
     metric_key = request.form.get('metricModel')
-    # print(valid_vehicles)
     metric_id = metric_name.lower().replace(" ", "_")
     metric_color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
     
@@ -989,8 +995,6 @@ def download_collection(collection_id):
                 
                 try:
                     results = getEnergy(vehicle_id, speed_data, param_list)
-                    # print("result get energy")
-                    # print(results)
                     # Create vehicle-specific folder
                     folder = f"results/{vehicle_type}"
                     
@@ -1124,4 +1128,4 @@ Analysis completed: {datetime.now().isoformat()}
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host="0.0.0.0", port=5000)

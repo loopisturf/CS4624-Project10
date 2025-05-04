@@ -1,0 +1,22 @@
+# front-end/Dockerfile.frontend
+FROM node:18
+
+WORKDIR /app
+
+# Copy package.json and package-lock.json first to leverage Docker cache
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy the rest of the React app code
+COPY . .
+
+# Build the React app for production
+RUN npm run build
+
+# Install the 'serve' package to serve the static files
+RUN npm install -g serve
+
+# Serve the built React app on port 3000
+CMD ["serve", "-s", "build", "-l", "3000"]
