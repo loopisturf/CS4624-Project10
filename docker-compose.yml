@@ -2,20 +2,21 @@ version: '3.8'
 services:
   frontend:
     build:
-      context: ./frontend
+      context: ./front-end
       dockerfile: Dockerfile.frontend
-    ports:
-      - "3000:3000"
-    # Remove the 'depends_on' attribute for frontend
+    command: npm run build  # Build the React app
+    volumes:
+      - ./front-end/build:/app/build  # This mounts the build folder to the backend
 
   backend:
     build:
-      context: .
+      context: .  # Path to the backend Dockerfile
       dockerfile: Dockerfile.backend
     ports:
       - "5000:5000"
     volumes:
       - ./energy_estimation.db:/app/energy_estimation.db
-      - ./frontend/build:/app/static/react_build  # Mount React build folder to backend
+      - ./front-end/build:/app/static/react_build  # Mount the React build to the backend
     env_file: .env
-    # Remove the 'depends_on' attribute for backend
+    depends_on:
+      - frontend  # Ensure frontend build happens before backend
