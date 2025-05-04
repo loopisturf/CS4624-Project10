@@ -1,16 +1,16 @@
-# Dockerfile.backend
 FROM python:3.10-slim
 
 WORKDIR /app
 
 # Install dependencies
-COPY requirements.txt ./
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend code
+# Copy the rest of the backend code
 COPY . .
 
-# Copy the frontend build (React build) into a specific subfolder inside static/
-COPY ../front-end/build ./static/react_build
+# Copy the built React app from the frontend service (after it is built)
+COPY ./frontend/build ./static/react_build
 
+# Command to run the Flask app
 CMD ["python", "app.py"]
