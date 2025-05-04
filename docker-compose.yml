@@ -2,34 +2,22 @@ version: '3.8'
 services:
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.frontend
+      context: ./frontend  # This assumes your Dockerfile.frontend is in ./frontend directory
+      dockerfile: Dockerfile.frontend  # Ensure it uses the correct Dockerfile
     ports:
-      - "3000:3000"  # React app will still be available on 3000
-    depends_on:
-      - backend  # Ensure backend is up before frontend
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://backend:5000/"]  # Check if backend is ready
-      interval: 10s  # Check every 10 seconds
-      retries: 5     # Retry 5 times before considering it unhealthy
-      start_period: 30s  # Give the backend 30 seconds to start before checking health
+      - "3000:3000"  # Expose React app on port 3000
     environment:
-      - REACT_APP_API_URL=http://backend:5000  # Set the backend URL for frontend
+      - REACT_APP_API_URL=http://backend:5000  # Frontend will access backend via this URL
+    volumes:
+      - ./frontend/build:/app/build  # Mount the local build folder to the container
 
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile.backend
+      context: .  # Build the backend from the root context
+      dockerfile: Dockerfile.backend  # Use the Dockerfile.backend for building
     ports:
-      - "5000:5000"  # Backend will be available on 5000
+      - "5000:5000"  # Expose Flask backend on port 5000
     volumes:
-      - ./energy_estimation.db:/app/energy_estimation.db
-      - ./frontend/build:/app/static/react_build  # Mount the React build folder to backend
-    env_file: .env
-    depends_on:
-      - frontend  # Ensure frontend build happens before backend
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/"]  # Check if backend is responding
-      interval: 10s  # Check every 10 seconds
-      retries: 5     # Retry 5 times before considering it unhealthy
-      start_period: 30s  # Give the backend 30 seconds to start before checking health
+      - ./energy_estimation.db:/app/energy_estimation.db  # Mount the database file
+      - ./frontend/build:/app/static/react_build  # Mount React build folder for Flask to serve static files
+    env_file: .env  # Ensure environment variables are set up
