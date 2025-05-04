@@ -2,21 +2,22 @@ version: '3.8'
 services:
   frontend:
     build:
-      context: ./front-end
+      context: ./frontend
       dockerfile: Dockerfile.frontend
-    command: npm run build  # Build the React app
-    volumes:
-      - ./front-end/build:/app/build  # This mounts the build folder to the backend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend  # Ensure backend is up before frontend
 
   backend:
     build:
-      context: .  # Path to the backend Dockerfile
+      context: .
       dockerfile: Dockerfile.backend
     ports:
       - "5000:5000"
     volumes:
       - ./energy_estimation.db:/app/energy_estimation.db
-      - ./front-end/build:/app/static/react_build  # Mount the React build to the backend
+      - ./frontend/build:/app/static/react_build  # Mount React build folder to backend
     env_file: .env
     depends_on:
-      - frontend  # Ensure frontend build happens before backend
+      - frontend
