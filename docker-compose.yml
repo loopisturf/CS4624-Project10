@@ -1,6 +1,14 @@
 version: '3.8'
 
 services:
+  frontend:
+    build:
+      context: ./front-end  # Path to the frontend folder
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    command: npm run build  # Build the React app
+
   backend:
     build:
       context: .  # This is the directory where the backend Dockerfile exists
@@ -11,12 +19,4 @@ services:
       - ./energy_estimation.db:/app/energy_estimation.db
     env_file: .env
     depends_on:
-      - frontend  # Ensure frontend is built before the backend
-
-  frontend:
-    build:
-      context: ./front-end  # Path to your React app
-      dockerfile: Dockerfile.frontend
-    ports:
-      - "3000:3000"
-    command: npm run build  # Build the React app (don't serve it yet)
+      - frontend  # Ensure frontend build finishes before backend builds

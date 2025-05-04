@@ -11,8 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the backend code
 COPY . .
 
-# Copy the built React app from the local system (not from the frontend service)
-COPY ./front-end/build ./static/react_build  # Copy the React build from your local filesystem
+# Copy the built React app (frontend/build) into the backend image
+COPY ./front-end/build ./static/react_build  # Ensure the build folder is copied locally
 
 # Command to run the Flask app
 CMD ["python", "app.py"]
