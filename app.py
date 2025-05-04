@@ -28,19 +28,13 @@ app = Flask(__name__, static_folder='static')
 app.config['PROPAGATE_EXCEPTIONS'] = False
 CORS(app)
 
-
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
-def serve_react(path):
-    # Define the path to the React build folder inside the static folder (react_build subfolder)
-    react_build_folder = os.path.join(app.static_folder, 'react_build')
-    
-    # Check if the requested file exists in the React build folder
-    if path != "" and os.path.exists(os.path.join(react_build_folder, path)):
-        return send_from_directory(react_build_folder, path)
+def serve(path):
+    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
     else:
-        # If the requested file doesn't exist, serve the index.html from the React build folder
-        return send_from_directory(react_build_folder, 'index.html')
+        return send_from_directory(app.static_folder, 'index.html')
 
 
 # --------------------------------------------------

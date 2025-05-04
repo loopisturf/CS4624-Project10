@@ -4,8 +4,6 @@ services:
     build:
       context: ./front-end
       dockerfile: Dockerfile.frontend
-    ports:
-      - "3000:3000"
     command: npm run build  # Build the React app
     volumes:
       - ./front-end/build:/app/build  # This mounts the build folder to the backend
