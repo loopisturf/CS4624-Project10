@@ -6,8 +6,7 @@ services:
       dockerfile: Dockerfile.frontend
     ports:
       - "3000:3000"
-    depends_on:
-      - backend  # Ensure backend is up before frontend
+    # Remove the 'depends_on' attribute for frontend
 
   backend:
     build:
@@ -19,5 +18,4 @@ services:
       - ./energy_estimation.db:/app/energy_estimation.db
       - ./frontend/build:/app/static/react_build  # Mount React build folder to backend
     env_file: .env
-    depends_on:
-      - frontend
+    # Remove the 'depends_on' attribute for backend
