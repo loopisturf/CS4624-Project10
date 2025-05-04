@@ -143,24 +143,20 @@ const WelcomePage = () => {
     <h3 className="team-subheader">Core Team</h3>
     <div className="team-grid">
         <div className="team-member">
-            <h4>Courtney Quinn</h4>
-            <p>Backend Lead & Group Leader</p>
+            <h4>Katelyn Crumpacker</h4>
+            <p>Design, Database & Team Leader</p>
         </div>
         <div className="team-member">
-            <h4>Layla Scott</h4>
-            <p>Frontend Lead</p>
+            <h4>Trevor White</h4>
+            <p>Requirements & Backend</p>
         </div>
         <div className="team-member">
-            <h4>Rohin Batra</h4>
-            <p>Backend Support</p>
+            <h4>David Rankin</h4>
+            <p>Prototyping & Frontend</p>
         </div>
         <div className="team-member">
-            <h4>Eric Tapia</h4>
-            <p>Backend Support</p>
-        </div>
-        <div className="team-member">
-            <h4>Christina Chao</h4>
-            <p>Frontend Support & Meeting Minutes</p>
+            <h4>Paladugu Harsha</h4>
+            <p>Implementation</p>
         </div>
     </div>
     
