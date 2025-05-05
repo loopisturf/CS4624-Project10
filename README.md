@@ -21,6 +21,8 @@ Researchers at VTTI have developed fuel/energy consumption models for various ve
 ## Features
 - User input for vehicle speed and acceleration profiles
 - Support for multiple vehicle types (ICEV, BEV, HEV, HFCV)
+- Adding new meterics for vehicle comparison
+- Updating vehicles parameters
 - Fuel/energy consumption estimation
 - Data visualization of results
 - User session management and data storage
@@ -98,10 +100,12 @@ deactivate
 - **POST** `/api/estimate`: Estimate energy consumption
 
 ## Project Timeline
-- September 23, 2023: Initial backend and frontend goals completed
-- September 26, 2023: Presentation 1
-- October 31, 2023: Presentation 2 and Interim Report
-- December 20, 2023: Final Presentation and Report
+- February 15th, 2025: Project page and client meeting
+- Februray 27th, 2025: Complete project planning
+- March 15th, 2025: Database and project setup
+- March 30th, 2025: Switched to Plotly.js and file upload feature for calcualtions
+- April 15th, 2025: File upload for vehicle parameters and final frontend changes
+- May 6th, 2025: Website deployed, and final report and presentation complete.
 
 For a detailed timeline, please refer to the project documentation.
 
