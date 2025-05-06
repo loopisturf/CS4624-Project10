@@ -24,19 +24,20 @@ from werkzeug.exceptions import HTTPException
 # Load environment variables
 load_dotenv()
 
-app = Flask(__name__, static_folder='static/react_build')
+# app = Flask(__name__, static_folder='static/react_build')
+app = Flask(__name__, static_folder="static/react_build", static_url_path="")
 app.config['PROPAGATE_EXCEPTIONS'] = False
 CORS(app)
 
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def serve(path):
-    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
-        return send_from_directory(app.static_folder, path)
-    else:
-        return send_from_directory(app.static_folder, 'index.html')
+
+@app.route("/")
+def index():
+    return send_from_directory(app.static_folder, "index.html")
 
 
+@app.errorhandler(404)
+def not_found(e):
+    return send_from_directory(app.static_folder, "index.html")
 # --------------------------------------------------
 @app.errorhandler(Exception)
 def handle_all_errors(e):
