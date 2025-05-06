@@ -4,9 +4,9 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile  # Unified Dockerfile
+      dockerfile: Dockerfile 
     ports:
       - "5000:5000"
-    volumes:
-      - ./energy_estimation.db:/app/energy_estimation.db
+    # volumes:
+    #   - ./energy_estimation.db:/app/energy_estimation.db
     env_file: .env

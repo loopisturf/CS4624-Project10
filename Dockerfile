@@ -22,6 +22,8 @@ COPY . .
 # Copy React build output from Stage 1 into Flask's static folder
 COPY --from=frontend /frontend/build /app/static/react_build
 
+COPY energy_estimation.db /app/
+
 # Flask app run settings
 ENV FLASK_APP=app.py
 ENV FLASK_RUN_HOST=0.0.0.0
