@@ -16,7 +16,7 @@ from getEnergy import getEnergy
 import io
 import zipfile
 import csv
-from flask import Flask, request, jsonify, send_file  # Add send_file to imports
+from flask import Flask, request, jsonify, send_file, send_from_directory  # Add send_file to imports
 import random
 import traceback
 from werkzeug.exceptions import HTTPException
