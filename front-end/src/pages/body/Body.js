@@ -100,19 +100,11 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
 
     useEffect(() => {
         const processChartData = async () => {
-            // console.log("DATA")
-            // console.log(data)
-            // console.log("speed profile")
-            // console.log(speedProfile)
-            // console.log("SELECTED METRIC")
-            // console.log(selectedMetric)
             if (!data?.model || !speedProfile || !selectedMetric) {
                 setProcessedChartData([]);
                 return;
             }
             const metricConfig = availableMetrics.find(m => m.id === selectedMetric);
-            // console.log("METRIC FONGI")
-            // console.log(metricConfig)
             if (!metricConfig) {
                 setProcessedChartData([]);
                 return;
@@ -123,13 +115,6 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
                 const selectedUnit = config.unit;
                 const id = config.id;
                 const engineResult = estimationResults;
-
-                // console.log("ESTIMATION")
-                // console.log(estimationResults)
-
-                // if (engineResult[selectedUnit] !== undefined && engineResult[selectedUnit] !== 0) {
-                //     filtered[selectedUnit] = engineResult[selectedUnit];
-                // }
     
                 if (engineResult[selectedUnit] !== undefined) {
                     if (engineResult[selectedUnit] === 0) {
@@ -144,15 +129,8 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
             };
     
             const newData = await getFilteredEstimationDataSeperate(data, metricConfig);
-            // if (Object.keys(newData).length === 0) {
-            //     return <div className="no-data-message">No data available for visualization</div>;
-            // }
-            console.log("NEW DATA")
-            console.log(newData)
     
             let result = [];
-            // console.log("VISAULIZATIoN TYPE")
-            // console.log(visualizationType)
             switch (visualizationType) {
                 case 'binned': {
                     const binnedData = new Map();
@@ -170,8 +148,6 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
                             // Check if newData is empty and set the flag accordingly
                             if (Object.keys(newData).length != 0) {
                                 const value = metricConfig.processValue(newData.model[index], speed);
-                                console.log("VALUE RIGHT HERE")
-                                console.log(value)
                                 if (!isNaN(value) && isFinite(value)) {
                                     const bin = binnedData.get(binKey);
                                     bin.values.push(value);
@@ -180,8 +156,6 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
                             }
                         }
                     });
-                    console.log("BINNED")
-                    console.log(binnedData.entries())
                     result = Array.from(binnedData.entries())
                         .map(([speed, bin]) => ({
                             speed,
@@ -266,8 +240,6 @@ const EnergyChart = ({ data, engineType, speedProfile }) => {
         return <div className="no-data-message">No data available for visualization</div>;
     }
 
-    // console.log("PROCESS CHART DATA")
-    // console.log(processChartData)
 
     const selectedMetricConfig = availableMetrics.find(m => m.id === selectedMetric);
     return (
@@ -460,17 +432,11 @@ const CombinedEnergyChart = ({ estimationResults, collection }) => {
             const speedProfile = collection.speed_profile;
             const metricConfig = availableMetrics.find(m => m.id === selectedMetric);
     
-            // console.log("METRIC CONFIG");
-            // console.log(metricConfig);
-            // console.log("ESTIMATION");
-            // console.log(estimationResults);
     
             if (!metricConfig) return;
     
             try {
                 const filteredEstimation = await getFilteredEstimationData(estimationResults, metricConfig);
-                // console.log("FILTERED");
-                // console.log(filteredEstimation);
     
                 Object.entries(filteredEstimation)
                     .filter(([id, engineResult]) => engineResult != null)
@@ -695,8 +661,6 @@ function Body({ isSidebarOpen }) {
         const response = await fetch(`/api/collections/${collectionId}`);
         if (!response.ok) throw new Error('Failed to fetch collection');
         const data = await response.json();
-        console.log("RESPONSE")
-        console.log(data.results)
 
         setCollection(data);
         
@@ -739,8 +703,6 @@ function Body({ isSidebarOpen }) {
       
       return updatedResults;
     });
-    // console.log("results")
-    // console.log(newResult)
   };
 
   if (loading) {

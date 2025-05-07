@@ -543,8 +543,6 @@ def estimate_energy():
         # 3) call getEnergy with the *type* id, not the param PK
         try:
             result = getEnergy(vehicle_type_id, speed_data, param_list)
-            print("result")
-            print(result)
         except Exception as calc_error:
             return jsonify({"error": f"Energy calculation failed: {calc_error}"}), 400
 
@@ -813,8 +811,6 @@ def update_collection(collection_id):
 @app.route('/api/get_metric', methods=['GET'])
 def get_metric():
     metric_id = request.args.get('id')
-    # print("metric_id")
-    # print(metric_id)
     if not metric_id:
         return jsonify({'error': 'Missing id parameter'}), 400
 
@@ -824,16 +820,12 @@ def get_metric():
 
         cursor.execute("SELECT * FROM metrics WHERE id = ?", (metric_id,))
         row = cursor.fetchone()
-        # print("rows")
-        # print(row)
         conn.close()
 
         if row:
             result = {
                 'valueKey': row[4]
             }
-            # print("model backend")
-            # print(result)
             return jsonify(result)
         else:
             return jsonify({'error': 'Metric not found'}), 404
@@ -868,7 +860,6 @@ def add_metric():
     metric_name = request.form.get('metricName')
     metric_units = request.form.get('metricUnits')
     metric_key = request.form.get('metricModel')
-    # print(valid_vehicles)
     metric_id = metric_name.lower().replace(" ", "_")
     metric_color = "#{:06x}".format(random.randint(0, 0xFFFFFF))
     
@@ -989,8 +980,6 @@ def download_collection(collection_id):
                 
                 try:
                     results = getEnergy(vehicle_id, speed_data, param_list)
-                    # print("result get energy")
-                    # print(results)
                     # Create vehicle-specific folder
                     folder = f"results/{vehicle_type}"
                     
